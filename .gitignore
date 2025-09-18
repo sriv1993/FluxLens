@@ -1,0 +1,55 @@
+# Binaries
+bin/
+dist/
+*.exe
+*.test
+*.out
+
+# Coverage
+coverage.txt
+coverage.html
+*.cov
+
+# Go module download cache (per-developer)
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
+.env.local
+*.local.yaml
+
+# Docker
+.docker/
+
+# Node
+node_modules/
+dashboard/dist/
+dashboard/.next/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Logs
+*.log
+logs/
+
+# Local data dirs (e.g., docker-compose volumes)
+data/
+.localdata/
+
+# Build artifacts
+*.tsbuildinfo
+

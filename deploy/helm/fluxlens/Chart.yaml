@@ -1,0 +1,19 @@
+apiVersion: v2
+name: fluxlens
+description: FluxLens — open-source platform for AI-augmented industrial event curation and decision support
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/sriharshav1/fluxlens
+sources:
+  - https://github.com/sriharshav1/fluxlens
+maintainers:
+  - name: Sri Harsha Vanga
+    email: sriharshav1@gmail.com
+keywords:
+  - cdc
+  - kafka
+  - ai
+  - decision-support
+  - audit
+  - critical-infrastructure

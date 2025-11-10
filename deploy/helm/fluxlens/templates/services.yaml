@@ -1,0 +1,22 @@
+{{- $root := . -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled (or (eq $svc "apiGateway") (eq $svc "dashboard")) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fluxlens.fullname" $root }}-{{ $svc | kebabcase }}
+  labels:
+    {{- include "fluxlens.labels" $root | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $root.Chart.Name }}
+    app.kubernetes.io/instance: {{ $root.Release.Name }}
+    fluxlens.dev/service: {{ $svc | kebabcase }}
+  ports:
+    - name: http
+      port: {{ default 8090 $cfg.port }}
+      targetPort: http
+{{- end }}
+{{- end }}

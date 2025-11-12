@@ -1,0 +1,68 @@
+image:
+  repository: ghcr.io/sriharshav1/fluxlens
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+services:
+  apiGateway:
+    enabled: true
+    replicas: 2
+    port: 8090
+  curator:
+    enabled: true
+    replicas: 2
+    strategy: 4
+    diversityPercent: 80
+    digestSize: 40
+    windowSeconds: 5
+  orchestrator:
+    enabled: true
+    replicas: 2
+  auditWriter:
+    enabled: true
+    replicas: 1
+  ingestMysql:
+    enabled: false
+    replicas: 1
+  dashboard:
+    enabled: true
+    replicas: 1
+    port: 8080
+
+kafka:
+  bootstrap: "kafka:9092"
+  topics:
+    rawEvents: "fluxlens.events.raw"
+    curatedDigests: "fluxlens.events.curated"
+    decisions: "fluxlens.decisions"
+    auditIn: "fluxlens.audit.in"
+
+llm:
+  baseUrl: "http://mock-llm:8080"
+  modelId: "fluxlens-mock-llm"
+  apiKeySecretRef: ""
+  useMock: true
+
+audit:
+  verifyEverySeconds: 60
+
+resources:
+  default:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}

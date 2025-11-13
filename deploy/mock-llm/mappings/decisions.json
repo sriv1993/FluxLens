@@ -1,0 +1,47 @@
+{
+  "mappings": [
+    {
+      "request": {
+        "method": "POST",
+        "urlPath": "/v1/chat/completions"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "id": "mock-completion-001",
+          "object": "chat.completion",
+          "created": 1700000000,
+          "model": "fluxlens-mock-llm",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "{\"classification\":\"routine\",\"suggestion\":\"continue monitoring; no immediate operator action recommended\",\"confidence\":0.82,\"requires_review\":false,\"reasons\":[\"event matches historical routine pattern\",\"severity below escalation threshold\"]}"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": { "prompt_tokens": 120, "completion_tokens": 60, "total_tokens": 180 }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "urlPath": "/v1/models"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "object": "list",
+          "data": [
+            { "id": "fluxlens-mock-llm", "object": "model", "created": 1700000000, "owned_by": "fluxlens-dev" }
+          ]
+        }
+      }
+    }
+  ]
+}

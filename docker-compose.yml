@@ -1,0 +1,81 @@
+# docker-compose stack for local FluxLens development.
+# Single-broker Kafka, single Postgres+TimescaleDB, single Redis,
+# and a mock LLM endpoint. NOT a production reference.
+
+services:
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: fluxlens-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    volumes:
+      - kafka-data:/bitnami/kafka
+
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: fluxlens-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: fluxlens
+      POSTGRES_PASSWORD: fluxlens-dev
+      POSTGRES_DB: fluxlens
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
+
+  redis:
+    image: redis:7-alpine
+    container_name: fluxlens-redis
+    ports:
+      - "6379:6379"
+
+  # Mock LLM endpoint for local development; returns canned responses.
+  # Replace with real OpenAI/Ollama/vLLM in production deployments.
+  mock-llm:
+    image: ghcr.io/wiremock/wiremock:3.7.0
+    container_name: fluxlens-mock-llm
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./deploy/mock-llm:/home/wiremock:ro
+    command:
+      - --port=8080
+      - --verbose
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: fluxlens-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: fluxlens-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: fluxlens-dev
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  kafka-data:
+  postgres-data:
+  grafana-data:

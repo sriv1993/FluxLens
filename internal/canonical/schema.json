@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluxlens.dev/schemas/canonical-event/1.0.0.json",
+  "title": "FluxLens Canonical Event v1.0.0",
+  "description": "Canonical schema for all events flowing through FluxLens. Operator-defined Payload schemas live in domain packs.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "source_id",
+    "source_type",
+    "event_type",
+    "severity",
+    "timestamp",
+    "ingested_at",
+    "payload",
+    "metadata"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Globally unique event identifier. Conventionally a ULID."
+    },
+    "source_id": {
+      "type": "string",
+      "description": "Operator-assigned source identifier (e.g., 'gigafactory-1-line-3')."
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "mysql_cdc",
+        "postgres_cdc",
+        "kafka",
+        "webhook",
+        "synthetic"
+      ]
+    },
+    "event_type": {
+      "type": "string",
+      "description": "Domain-defined event type (e.g., 'sensor.temperature.overshoot')."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "warn", "error", "critical"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Origin time of the event."
+    },
+    "ingested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Time the event entered FluxLens."
+    },
+    "payload": {
+      "description": "Domain-defined event payload. Validated against operator domain pack schema."
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["schema_version"],
+      "properties": {
+        "trace_id": { "type": "string" },
+        "ingestion_pod": { "type": "string" },
+        "schema_version": { "type": "string" },
+        "tenant_id": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

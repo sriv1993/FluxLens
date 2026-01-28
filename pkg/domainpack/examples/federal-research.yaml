@@ -1,0 +1,48 @@
+apiVersion: fluxlens.dev/v1alpha1
+kind: DomainPack
+metadata:
+  name: federal-research-coordination
+  version: 1.0.0
+  description: Reference domain pack for U.S. Department of Energy national laboratories and other FFRDCs.
+
+spec:
+  eventTypes:
+    - { name: research.coordination.meeting.created,             severityDefault: info }
+    - { name: research.coordination.meeting.attendance.recorded, severityDefault: info }
+    - { name: research.coordination.proposal.submitted,          severityDefault: info }
+    - { name: research.computing.job.completed,                  severityDefault: info }
+    - { name: research.computing.job.failed,                     severityDefault: warn }
+    - { name: instrument.run.started,                            severityDefault: info }
+    - { name: instrument.run.completed,                          severityDefault: info }
+    - { name: instrument.malfunction.detected,                   severityDefault: warn, escalateAfterCount: 2, escalateWithinSeconds: 300, escalatedSeverity: error }
+    - { name: data.export.requested,                             severityDefault: info }
+    - { name: data.export.approved,                              severityDefault: info }
+    - { name: data.export.rejected,                              severityDefault: warn }
+    - { name: security.access.granted,                           severityDefault: info }
+    - { name: security.access.revoked,                           severityDefault: info }
+    - { name: security.access.unauthorized_attempt,              severityDefault: warn, escalateAfterCount: 3, escalateWithinSeconds: 60, escalatedSeverity: critical }
+    - { name: security.audit.event,                              severityDefault: info }
+    - { name: compliance.policy.violation.detected,              severityDefault: error }
+
+  operatorRoles:
+    - name: research_coordination_manager
+      curation: { strategy: 4, diversityPercent: 80, k: 30 }
+    - name: research_computing_ops_manager
+      curation: { strategy: 4, diversityPercent: 70, k: 30 }
+    - name: instrument_ops_manager
+      curation: { strategy: 6, diversityPercent: 70, k: 20,
+                  preferredSources: ["{{ .OperatorScope.InstrumentIDs }}"] }
+    - name: data_steward
+      curation: { strategy: 1, k: 20 }
+      filters:  { eventTypeStartsWith: data. }
+    - name: information_security_officer
+      curation: { strategy: 4, diversityPercent: 90, k: 30 }
+      filters:  { minSeverity: warn }
+    - name: compliance_officer
+      curation: { strategy: 1, k: 20 }
+      filters:  { eventTypeIn: [compliance.policy.violation.detected, security.audit.event] }
+
+  auditRetention:
+    minimumYears: 10
+    enableWormMirror: true
+    wormBackend: s3-object-lock

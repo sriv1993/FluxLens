@@ -1,0 +1,48 @@
+apiVersion: fluxlens.dev/v1alpha1
+kind: DomainPack
+metadata:
+  name: retail-supply-chain-resilience
+  version: 1.0.0
+  description: Reference domain pack for U.S. national-scale retailers (CISA Commercial Facilities + Food and Agriculture sectors).
+
+spec:
+  eventTypes:
+    - { name: facility.opening.completed,          severityDefault: info }
+    - { name: facility.closing.completed,          severityDefault: info }
+    - { name: workforce.scheduling.deficit,        severityDefault: warn }
+    - { name: workforce.attendance.no_show.surge,  severityDefault: warn,  escalateAfterCount: 3, escalateWithinSeconds: 600, escalatedSeverity: error }
+    - { name: inventory.stockout.imminent,         severityDefault: warn,  escalateAfterCount: 5, escalateWithinSeconds: 300, escalatedSeverity: error }
+    - { name: inventory.stockout.actual,           severityDefault: error }
+    - { name: supply_chain.delivery.late,          severityDefault: warn,  escalateAfterSeconds: 1800, escalatedSeverity: error }
+    - { name: supply_chain.disruption.detected,    severityDefault: warn,  escalateAfterCount: 2, escalateWithinSeconds: 1800, escalatedSeverity: error }
+    - { name: safety.incident.minor,               severityDefault: warn }
+    - { name: safety.incident.major,               severityDefault: critical }
+    - { name: safety.severe_weather.alert,         severityDefault: critical }
+    - { name: safety.public_health.alert,          severityDefault: critical }
+    - { name: safety.active_threat.alert,          severityDefault: critical }
+    - { name: payment.system.outage,               severityDefault: error }
+    - { name: loss_prevention.shrinkage.anomaly,   severityDefault: warn }
+
+  operatorRoles:
+    - name: store_manager
+      curation: { strategy: 3, k: 20, suppressionWindowSeconds: 60 }
+      filters:  { sources: ["{{ .OperatorScope.FacilityID }}"] }
+    - name: regional_ops_director
+      curation: { strategy: 4, diversityPercent: 80, k: 40, suppressionWindowSeconds: 60 }
+    - name: workforce_planning_analyst
+      curation: { strategy: 4, diversityPercent: 70, k: 30 }
+      filters:  { eventTypes: [workforce.scheduling.deficit, workforce.attendance.no_show.surge] }
+    - name: supply_chain_analyst
+      curation: { strategy: 6, diversityPercent: 60, k: 30,
+                  preferredSources: [critical-supplier-1, critical-supplier-2, critical-supplier-3] }
+      filters:  { eventTypes: [supply_chain.delivery.late, supply_chain.disruption.detected, inventory.stockout.imminent, inventory.stockout.actual] }
+    - name: safety_officer
+      curation: { strategy: 1, k: 10 }
+      filters:  { minSeverity: error }
+    - name: incident_commander
+      curation: { strategy: 1, k: 10 }
+      filters:  { minSeverity: critical }
+
+  auditRetention:
+    minimumYears: 7
+    enableWormMirror: false

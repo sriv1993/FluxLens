@@ -1,7 +1,7 @@
 # ADR 0009 — OpenTelemetry as the sole observability standard
 
 - **Status:** Accepted
-- **Date:** 2026-05-16
+- **Date:** 2025-12-04
 
 ## Context
 

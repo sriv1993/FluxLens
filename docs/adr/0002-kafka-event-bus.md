@@ -1,7 +1,7 @@
 # ADR 0002 — Apache Kafka as the event bus
 
 - **Status:** Accepted
-- **Date:** 2026-05-16
+- **Date:** 2025-11-21
 
 ## Context
 

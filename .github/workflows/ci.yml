@@ -24,7 +24,10 @@ jobs:
 
       - name: Verify gofmt
         run: |
-          out=$(gofmt -l $(find . -name '*.go' -not -path './vendor/*'))
+          out=$(find . -name '*.go' \
+            -not -path './vendor/*' \
+            -not -path './dashboard/node_modules/*' \
+            -exec gofmt -l {} +)
           if [ -n "$out" ]; then
             echo "Unformatted files:"
             echo "$out"

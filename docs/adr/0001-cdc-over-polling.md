@@ -1,7 +1,7 @@
 # ADR 0001 — Use CDC over polling for source-system ingestion
 
 - **Status:** Accepted
-- **Date:** 2026-05-16
+- **Date:** 2025-11-20
 - **Author:** Sri Harsha Vanga
 
 ## Context

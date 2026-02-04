@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- CI `gofmt` check failing on several command entrypoints and `internal/orchestrator`.
+
 ### Added
 
 - Initial project scaffolding (README, PRD, ARCHITECTURE, ROADMAP, LICENSE)

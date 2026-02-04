@@ -24,12 +24,12 @@ import (
 )
 
 type curatedDigest struct {
-	Strategy   int                `json:"strategy"`
-	Freshness  float64            `json:"freshness"`
-	Diversity  float64            `json:"diversity"`
-	Redundancy float64            `json:"redundancy"`
-	Selected   []canonical.Event  `json:"selected_events"`
-	WindowEnd  string             `json:"window_end"`
+	Strategy   int               `json:"strategy"`
+	Freshness  float64           `json:"freshness"`
+	Diversity  float64           `json:"diversity"`
+	Redundancy float64           `json:"redundancy"`
+	Selected   []canonical.Event `json:"selected_events"`
+	WindowEnd  string            `json:"window_end"`
 }
 
 func main() {

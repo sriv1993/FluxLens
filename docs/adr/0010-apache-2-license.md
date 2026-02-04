@@ -1,7 +1,7 @@
 # ADR 0010 — Apache 2.0 license
 
 - **Status:** Accepted
-- **Date:** 2026-05-16
+- **Date:** 2025-12-05
 
 ## Context
 

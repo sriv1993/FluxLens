@@ -1,7 +1,7 @@
 # ADR 0005 — Append-only hash-chained audit log
 
 - **Status:** Accepted
-- **Date:** 2026-05-16
+- **Date:** 2025-11-26
 - **Author:** Sri Harsha Vanga
 
 ## Context

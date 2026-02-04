@@ -1,7 +1,7 @@
 # ADR 0004 — MyRocks for the archive tier
 
 - **Status:** Accepted
-- **Date:** 2026-05-16
+- **Date:** 2025-11-25
 
 ## Context
 

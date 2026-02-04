@@ -44,15 +44,15 @@ func New(provider llm.Provider, guardrails *Guardrails, chain *auditlog.Chain, t
 
 // Decision is the orchestrator's per-event result.
 type Decision struct {
-	EventID         string
-	Provider        string
-	ModelID         string
-	PromptHash      string
-	Response        Response
-	Guardrails      string // "pass" | "rejected_input" | "rejected_output" | "provider_error"
-	OperatorReview  bool   // true if requires_review is set or guardrails marked review
-	AuditChainHash  string
-	AuditChainPrev  string
+	EventID        string
+	Provider       string
+	ModelID        string
+	PromptHash     string
+	Response       Response
+	Guardrails     string // "pass" | "rejected_input" | "rejected_output" | "provider_error"
+	OperatorReview bool   // true if requires_review is set or guardrails marked review
+	AuditChainHash string
+	AuditChainPrev string
 }
 
 // Decide runs the full decision pipeline on a single canonical event.
@@ -67,12 +67,12 @@ func (o *Orchestrator) Decide(ctx context.Context, event canonical.Event, instru
 	}
 
 	contextBytes, _ := json.Marshal(map[string]any{
-		"event_id":    event.EventID,
-		"source_id":   event.SourceID,
-		"event_type":  event.EventType,
-		"severity":    event.Severity,
-		"timestamp":   event.Timestamp,
-		"payload":     event.Payload,
+		"event_id":   event.EventID,
+		"source_id":  event.SourceID,
+		"event_type": event.EventType,
+		"severity":   event.Severity,
+		"timestamp":  event.Timestamp,
+		"payload":    event.Payload,
 	})
 	contextStr := string(contextBytes)
 

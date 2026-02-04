@@ -1,7 +1,7 @@
 # ADR 0006 — Human-override enforced in code, not policy
 
 - **Status:** Accepted
-- **Date:** 2026-05-16
+- **Date:** 2025-12-01
 - **Author:** Sri Harsha Vanga
 
 ## Context

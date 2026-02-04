@@ -1,7 +1,7 @@
 # ADR 0003 — Postgres + TimescaleDB for the hot store
 
 - **Status:** Accepted
-- **Date:** 2026-05-16
+- **Date:** 2025-11-24
 
 ## Context
 

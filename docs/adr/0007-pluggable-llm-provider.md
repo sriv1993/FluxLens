@@ -1,7 +1,7 @@
 # ADR 0007 — Pluggable LLM provider interface
 
 - **Status:** Accepted
-- **Date:** 2026-05-16
+- **Date:** 2025-12-02
 
 ## Context
 

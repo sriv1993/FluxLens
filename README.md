@@ -171,11 +171,11 @@ Apache License 2.0 — see [`LICENSE`](./LICENSE).
 ## Citation
 
 ```bibtex
-@misc{fluxlens2026,
+@misc{fluxlens2025,
   author       = {Vanga, Sri Harsha},
   title        = {FluxLens: An Open-Source Platform for AI-Augmented
                   Industrial Event Curation and Decision Support},
-  year         = {2026},
+  year         = {2025},
   howpublished = {GitHub repository},
   url          = {https://github.com/sriharshav1/fluxlens}
 }

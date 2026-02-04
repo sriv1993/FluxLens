@@ -1,7 +1,7 @@
 # ADR 0008 — Kubernetes-native deployment
 
 - **Status:** Accepted
-- **Date:** 2026-05-16
+- **Date:** 2025-12-03
 
 ## Context
 

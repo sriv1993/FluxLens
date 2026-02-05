@@ -1,8 +1,6 @@
 # FluxLens — Product Requirements Document
 
-> **Document status:** Draft v0.1 — May 2026
 > **Author:** Sri Harsha Vanga
-> **Last updated:** May 16, 2026
 
 ## 1. Executive Summary
 
@@ -577,11 +575,11 @@ once Phase 1 implementation begins.
 
 See [ROADMAP.md](./ROADMAP.md) for full detail. Summary:
 
-- **Phase 1 (May–July 2026):** MVP — ingestion + curation + AI
+- **Phase 1:** MVP — ingestion + curation + AI
   decision-support stub + audit log + reference dashboard.
-- **Phase 2 (Aug–Nov 2026):** Production readiness — hardening,
+- **Phase 2 :** Production readiness — hardening,
   HA, observability, comprehensive test coverage, public CI.
-- **Phase 3 (Dec 2026 – 2027):** Ecosystem and integrations — Helm
+- **Phase 3 :** Ecosystem and integrations — Helm
   charts, Terraform modules, SIEM integrations, plugin marketplace.
 
 ## 14. Comparison to Existing Systems

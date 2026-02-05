@@ -1,9 +1,9 @@
 # FluxLens — Roadmap
 
-> **Status:** Draft v0.1 — May 2026
+> **Status:** Draft v0.1
 > **Companion to:** [PRD.md](./PRD.md), [ARCHITECTURE.md](./ARCHITECTURE.md)
 
-## Phase 1 — Minimum Viable Platform (May 2026 – July 2026)
+## Phase 1 — Minimum Viable Platform
 
 **Goal.** Deliver a working end-to-end platform supporting the core
 flow (ingest → curate → AI decision-support → audit → serve) on a
@@ -42,7 +42,7 @@ single Kubernetes cluster with one CDC source and one LLM provider.
 - ✅ CI: lint, test, build, image-sign, vulnerability scan on every PR
 - ✅ Test coverage ≥70% lines (target ≥80% by Phase 2)
 
-## Phase 2 — Production Readiness (August 2026 – November 2026)
+## Phase 2 — Production Readiness
 
 **Goal.** Harden FluxLens for production deployment in
 operator-controlled environments. Add Postgres CDC, Kafka source,
@@ -51,19 +51,19 @@ reliability properties documented in ARCHITECTURE §5.
 
 ### Milestones
 
-| Milestone | Target |
-|---|---|
-| M2.1 Postgres logical-replication CDC connector | August 2026 |
-| M2.2 Kafka source bridge | August 2026 |
-| M2.3 Webhook gateway | August 2026 |
-| M2.4 MyRocks archive tier and partition-drop purge | September 2026 |
-| M2.5 OpenTelemetry full coverage + Grafana dashboards | September 2026 |
-| M2.6 Multi-AZ deployment with failover testing | October 2026 |
-| M2.7 Local LLM provider (Ollama / vLLM) | October 2026 |
-| M2.8 OAuth2 / OIDC authentication and RBAC | October 2026 |
-| M2.9 Sigstore / cosign image signing + admission policy | November 2026 |
-| M2.10 Comprehensive load testing + capacity planning docs | November 2026 |
-| M2.11 v1.0.0 release (production-ready) | End of November 2026 |
+| Milestone | 
+|---|
+| M2.1 Postgres logical-replication CDC connector | 
+| M2.2 Kafka source bridge |
+| M2.3 Webhook gateway |
+| M2.4 MyRocks archive tier and partition-drop purge |
+| M2.5 OpenTelemetry full coverage + Grafana dashboards |
+| M2.6 Multi-AZ deployment with failover testing | 
+| M2.7 Local LLM provider (Ollama / vLLM) | 
+| M2.8 OAuth2 / OIDC authentication and RBAC | 
+| M2.9 Sigstore / cosign image signing + admission policy | 
+| M2.10 Comprehensive load testing + capacity planning docs | 
+| M2.11 v1.0.0 release (production-ready) | 
 
 ### Phase 2 deliverable criteria
 
@@ -75,7 +75,7 @@ reliability properties documented in ARCHITECTURE §5.
 - ✅ API availability target 99.9% verified under load
 - ✅ Helm chart published
 
-## Phase 3 — Ecosystem and Integrations (December 2026 – 2027)
+## Phase 3 — Ecosystem and Integrations
 
 **Goal.** Build the ecosystem around FluxLens — integrations,
 deployment automation, plugin marketplace, and operator-community
@@ -99,12 +99,12 @@ governance.
 
 | Milestone | Target |
 |---|---|
-| M3.1 Helm chart and AWS Marketplace listing | Q1 2027 |
-| M3.2 Splunk and Elastic integrations | Q1 2027 |
-| M3.3 Plugin SDK and reference plugins | Q2 2027 |
-| M3.4 First external production deployment (case study) | Q2 2027 |
-| M3.5 v2.0.0 release (extended ecosystem) | Mid-2027 |
-| M3.6 Steering committee formation | Mid-2027 |
+| M3.1 Helm chart and AWS Marketplace listing | Q1 2026 |
+| M3.2 Splunk and Elastic integrations | Q1 2026 |
+| M3.3 Plugin SDK and reference plugins | Q2 2026 |
+| M3.4 First external production deployment (case study) | Q2 2026 |
+| M3.5 v2.0.0 release (extended ecosystem) | Mid-2026 |
+| M3.6 Steering committee formation | Mid-2026 |
 
 ## Out-of-scope (explicitly)
 

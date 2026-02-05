@@ -115,7 +115,7 @@ available as open source.
 
 ## Status
 
-**Phase 1 MVP — early active development. Initial public commit: May 2026.**
+**Phase 1 MVP — early active development.**
 
 - ✅ Canonical event schema
 - ✅ All six curation algorithms with unit + end-to-end tests

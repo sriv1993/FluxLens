@@ -1,6 +1,5 @@
 # FluxLens — Architecture
 
-> **Document status:** Draft v0.1 — May 2026
 > **Author:** Sri Harsha Vanga
 > **Companion to:** [PRD.md](./PRD.md)
 

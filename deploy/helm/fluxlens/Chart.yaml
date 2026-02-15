@@ -8,8 +8,7 @@ home: https://github.com/sriharshav1/fluxlens
 sources:
   - https://github.com/sriharshav1/fluxlens
 maintainers:
-  - name: Sri Harsha Vanga
-    email: sriharshav1@gmail.com
+  - name: FluxLens maintainers
 keywords:
   - cdc
   - kafka

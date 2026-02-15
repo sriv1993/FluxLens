@@ -16,7 +16,7 @@ import (
 
 	kafka "github.com/segmentio/kafka-go"
 
-	"github.com/sriharshav1/fluxlens/internal/auditlog"
+	"github.com/sriharshav1/fluxlens/internal/auditlog/factory"
 )
 
 func main() {
@@ -24,6 +24,8 @@ func main() {
 	topic := flag.String("topic", "fluxlens.audit.in", "Input topic for audit records")
 	group := flag.String("group", "fluxlens-audit-writer", "Consumer group ID")
 	verifyEvery := flag.Duration("verify-every", 60*time.Second, "How often to run chain self-verification")
+	postgresDSN := flag.String("postgres-dsn", os.Getenv("FLUXLENS_POSTGRES_DSN"), "Postgres DSN; empty uses in-memory chain")
+	tenant := flag.String("tenant", "default", "Tenant id when using Postgres")
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -34,7 +36,13 @@ func main() {
 		cancel()
 	}()
 
-	chain := auditlog.NewChain()
+	openCtx, openCancel := context.WithTimeout(ctx, 15*time.Second)
+	chain, closeStore, err := factory.Open(openCtx, *postgresDSN, *tenant)
+	openCancel()
+	if err != nil {
+		log.Fatalf("audit store: %v", err)
+	}
+	defer closeStore()
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{*kafkaAddr},

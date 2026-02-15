@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, AuditResponse, DigestResult, HealthResponse } from "./api";
+import { api, AlertsResponse, AuditResponse, DigestResult, HealthResponse } from "./api";
 import Header from "./components/Header";
 import EventFeed from "./components/EventFeed";
 import AuditPanel from "./components/AuditPanel";
+import AlertsPanel from "./components/AlertsPanel";
+import OperatorWedge from "./components/OperatorWedge";
 
 const STRATEGY_LABELS: Record<number, string> = {
   1: "Latest",
@@ -17,6 +19,7 @@ export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [digest, setDigest] = useState<DigestResult | null>(null);
   const [audit, setAudit] = useState<AuditResponse | null>(null);
+  const [alertPack, setAlertPack] = useState<AlertsResponse | null>(null);
   const [strategy, setStrategy] = useState(4);
   const [diversity, setDiversity] = useState(80);
   const [k, setK] = useState(20);
@@ -24,10 +27,16 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [h, d, a] = await Promise.all([api.health(), api.digest(strategy, diversity, k), api.audit()]);
+      const [h, d, a, al] = await Promise.all([
+        api.health(),
+        api.digest(strategy, diversity, k),
+        api.audit(),
+        api.alerts(),
+      ]);
       setHealth(h);
       setDigest(d);
       setAudit(a);
+      setAlertPack(al);
       setErr(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -90,9 +99,18 @@ export default function App() {
         </section>
       )}
 
+      <OperatorWedge events={digest?.Selected ?? []} onRefresh={refresh} />
+
       <main className="main">
-        <EventFeed events={digest?.Selected ?? []} />
+        <EventFeed events={digest?.Selected ?? []} onRefresh={refresh} />
         <AuditPanel audit={audit} />
+        <AlertsPanel
+          alerts={alertPack?.alerts ?? []}
+          onClear={async () => {
+            await api.clearAlerts();
+            await refresh();
+          }}
+        />
       </main>
     </div>
   );

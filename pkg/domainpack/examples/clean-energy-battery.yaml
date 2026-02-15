@@ -1,114 +1,21 @@
-# FluxLens domain pack — clean-energy battery manufacturing
-# Schema version: 1.0.0
-# See docs/domain-packs/clean-energy-battery-manufacturing.md for rationale.
-
-apiVersion: fluxlens.dev/v1alpha1
-kind: DomainPack
-metadata:
-  name: clean-energy-battery-manufacturing
-  version: 1.0.0
-  description: Reference domain pack for U.S. lithium-ion battery cell, module, and pack manufacturers.
-
-spec:
-  eventTypes:
-    - name: cell.formation.cycle.completed
-      severityDefault: info
-    - name: cell.formation.cycle.failed
-      severityDefault: error
-    - name: cell.quality.electrochemical.anomaly
-      severityDefault: warn
-      escalateAfterCount: 3
-      escalateWithinSeconds: 60
-      escalatedSeverity: error
-    - name: cell.quality.dimensional.deviation
-      severityDefault: warn
-      escalateAfterCount: 3
-      escalateWithinSeconds: 60
-      escalatedSeverity: error
-    - name: module.assembly.weld.failure
-      severityDefault: error
-    - name: module.assembly.completed
-      severityDefault: info
-    - name: pack.test.thermal.runaway.precursor
-      severityDefault: critical
-    - name: pack.test.completed
-      severityDefault: info
-    - name: line.throughput.drop
-      severityDefault: warn
-    - name: line.equipment.downtime
-      severityDefault: warn
-      escalateAfterSeconds: 300
-      escalatedSeverity: error
-    - name: materials.supply.delivery.late
-      severityDefault: warn
-      escalateAfterSeconds: 1800
-      escalatedSeverity: error
-    - name: materials.supply.disruption.predicted
-      severityDefault: warn
-    - name: safety.evacuation.required
-      severityDefault: critical
-
-  operatorRoles:
-    - name: line_operator
-      curation:
-        strategy: 3  # StrategyHybridLatestAndPerSource
-        k: 20
-        suppressionWindowSeconds: 60
-      filters:
-        sources: ["{{ .OperatorScope.LineID }}"]
-
-    - name: cell_quality_engineer
-      curation:
-        strategy: 4  # StrategyGuaranteedMinDiversity
-        diversityPercent: 80
-        k: 40
-        suppressionWindowSeconds: 60
-      filters:
-        eventTypes:
-          - cell.formation.cycle.failed
-          - cell.quality.electrochemical.anomaly
-          - cell.quality.dimensional.deviation
-
-    - name: process_engineer
-      curation:
-        strategy: 4  # StrategyGuaranteedMinDiversity
-        diversityPercent: 70
-        k: 30
-        suppressionWindowSeconds: 60
-      filters:
-        eventTypes:
-          - line.throughput.drop
-          - line.equipment.downtime
-          - module.assembly.weld.failure
-
-    - name: materials_supply_chain_engineer
-      curation:
-        strategy: 6  # StrategyPreferredSources
-        diversityPercent: 60
-        k: 20
-        suppressionWindowSeconds: 120
-        preferredSources:
-          - critical-materials-lithium
-          - critical-materials-cobalt
-          - critical-materials-nickel
-          - critical-materials-rare-earths
-      filters:
-        eventTypes:
-          - materials.supply.delivery.late
-          - materials.supply.disruption.predicted
-
-    - name: safety_officer
-      curation:
-        strategy: 1  # StrategyLatest
-        k: 10
-      filters:
-        minSeverity: error
-
-  auditRetention:
-    minimumYears: 10
-    enableWormMirror: true
-    wormBackend: s3-object-lock
-    tagPayloadFields:
-      - cell_serial
-      - module_serial
-      - pack_serial
+name: clean-energy-battery
+description: Battery gigafactory line and quality telemetry
+instruction: |
+  You are assisting a clean-energy battery manufacturing line supervisor.
+  Classify the event (routine / elevated / critical) and propose one concrete
+  operator action in under two sentences. Never recommend autonomous line stops
+  without explicit human review when confidence is below 0.85.
+roles:
+  - name: line_supervisor
+    curation_strategy: 4
+    diversity_percent: 80
+    digest_size: 20
+  - name: quality_engineer
+    curation_strategy: 2
+    diversity_percent: 70
+    digest_size: 30
+event_types:
+  - name: cell_formation_anomaly
+    default_severity: warn
+  - name: thermal_runaway_risk
+    default_severity: critical

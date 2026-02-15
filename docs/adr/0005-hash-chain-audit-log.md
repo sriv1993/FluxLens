@@ -2,7 +2,6 @@
 
 - **Status:** Accepted
 - **Date:** 2025-11-26
-- **Author:** Sri Harsha Vanga
 
 ## Context
 

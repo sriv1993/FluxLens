@@ -11,7 +11,8 @@ supported version. Tagged releases will be supported once Phase 2 GA
 If you discover a security vulnerability in FluxLens, please report it
 privately so we can address it before public disclosure.
 
-**Contact:** sriharshav1@gmail.com
+**Contact:** Report through GitHub (**Security** tab → **Report a
+vulnerability**), which keeps the thread private until a fix is published.
 
 Please include:
 

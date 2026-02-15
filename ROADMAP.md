@@ -115,7 +115,7 @@ governance.
 
 ## How this roadmap is maintained
 
-- Updated monthly by the project lead in `ROADMAP.md` on the `main`
+- Updated monthly by maintainers in `ROADMAP.md` on the `main`
   branch.
 - GitHub Projects board reflects current sprint state.
 - Phase boundaries reviewed at the end of each phase; subsequent

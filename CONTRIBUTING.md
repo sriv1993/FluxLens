@@ -50,7 +50,7 @@ make build      # build the FluxLens binaries
    - Maintain or improve code coverage
    - Update documentation when API or behavior changes
    - Include an ADR under `docs/adr/` for non-trivial architectural changes
-4. PRs are reviewed by the project lead. A second reviewer joins once
+4. PRs are reviewed by maintainers. A second reviewer joins once
    a steering committee is formed (planned Phase 2).
 
 ## Architecture Decision Records (ADRs)

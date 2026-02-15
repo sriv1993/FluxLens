@@ -138,8 +138,8 @@ alert.
 ## What you just demonstrated
 
 - **Hyper-scale CDC-style ingestion** via synthetic source and Kafka.
-- **All six curation algorithms** from Buthalapalli & Vanga (2025),
-  generalized to operational events.
+- **All six curation algorithms** balancing freshness, diversity, and redundancy,
+  applied here to operational events.
 - **AI decision support** with guardrails enforced in code.
 - **Hash-chained audit log** with end-to-end verification.
 - **Operator dashboard** with real-time score telemetry.
@@ -155,7 +155,5 @@ or jump straight to the Helm chart at `deploy/helm/fluxlens/`.
 - [`docs/adr/`](../adr/) — the decisions behind the design
 - [`docs/domain-packs/`](../domain-packs/) — reference packs for
   clean-energy manufacturing, retail, federal research
-- [`docs/national-interest/`](../national-interest/) — why FluxLens
-  matters for U.S. critical sectors
 - [`docs/compliance/`](../compliance/) — NIST AI RMF, 800-53, FedRAMP
   posture

@@ -1,6 +1,5 @@
 # FluxLens — Architecture
 
-> **Author:** Sri Harsha Vanga
 > **Companion to:** [PRD.md](./PRD.md)
 
 This document records the technical architecture and key design
@@ -102,6 +101,45 @@ flowchart LR
     SR4 --> CO1
 ```
 
+### 3.1 Phase 1 reference topology (`cmd/api-gateway`)
+
+Production retains the decomposition above. For **depth-first demos**
+(and CI), the `api-gateway` binary optionally **folds** orchestrator,
+recent-events RAM buffer, digest scoring, alert buffering, and audit
+verification into **one OS process** sharing a single `auditlog.Chain`.
+
+```mermaid
+flowchart LR
+  subgraph GW[api-gateway single process]
+    REST[HTTP mux]
+    BUF[recent events buffer]
+    CHAIN[auditlog.Chain]
+    CUR[curation.Select]
+    ORCH[orchestrator]
+    MOCK[Mock LLM provider]
+    ALRT[alerts.Store]
+  end
+  UI[dashboard static UI]
+
+  REST --> BUF
+  REST --> CUR
+  CUR --> BUF
+  CUR -->|append digest_selection| CHAIN
+  REST --> ORCH
+  ORCH --> MOCK
+  ORCH -->|append decision variants| CHAIN
+  REST -->|operator resolve| ORCH
+  ORCH -->|append operator_action| CHAIN
+  REST --> ALRT
+  CHAIN -->|Verify on reads| REST
+  UI --> REST
+```
+
+This topology trades HA isolation for **legibility**: reviewers can
+execute ingest → digest → AI suggestion → human resolution → JSON export
+without Kafka or Postgres. Horizontal deployments MUST split writers per
+ADR backlog once throughput exceeds single-node limits.
+
 ## 4. Data architecture
 
 ### 4.1 Storage tiers
@@ -129,8 +167,8 @@ flowchart LR
 - `events_archive` — partitioned by `ingested_at`, 30-day chunks;
   partition drops for purge
 - `decisions_archive` — partitioned similarly
-- Compression ratio target: 2:1 vs. equivalent InnoDB (consistent
-  with Vanga & Buthalapalli 2025)
+- Compression ratio target: 2:1 vs. equivalent InnoDB (typical for
+  MyRocks on similar write-heavy archive workloads)
 
 ### 4.4 Audit log architecture
 
@@ -153,6 +191,12 @@ flowchart LR
   in compliance mode for operators that require it.
 - Periodic chain verifier process recomputes hashes and alerts on
   divergence.
+
+**Phase 1 gateway note.** `cmd/api-gateway` keeps `auditlog.Chain` in-process,
+calls `Verify()` after ingest/digest/audit/operator/export mutations, and maps
+verification regressions into buffered alerts (`internal/alerts`). This makes
+tampering visible during demos but **does not** satisfy separated-duties or WORM
+requirements until the standalone audit-writer path is exercised.
 
 ## 5. Reliability architecture
 
@@ -247,9 +291,9 @@ and is added before any non-trivial architectural change.
 
 | Component | Choice | Rationale |
 |---|---|---|
-| Ingestion services | Go | High-throughput, low-memory, mature CDC ecosystem (project lead's stated language) |
+| Ingestion services | Go | High-throughput, low-memory, mature CDC ecosystem |
 | ML services | Python | Standard ML/LLM ecosystem |
-| Event bus | Kafka | Production-proven at trillion-record monthly scale (Vanga & Buthalapalli, 2025) |
+| Event bus | Kafka | Production-proven at very high throughput in large operators |
 | Hot store | Postgres + TimescaleDB | ACID guarantees + time-series partitioning |
 | Archive store | MyRocks | LSM-tree compression for cold data |
 | Audit log | Append-only on Postgres with WORM mirror | Tamper-evidence via hash chain |
@@ -276,6 +320,96 @@ flowchart LR
 The single-machine docker-compose stack starts Kafka, Postgres, Redis,
 a mock LLM endpoint, and all FluxLens services from source for
 developer iteration. `make dev` brings the stack up.
+
+### 9.1 Operator wedge sequence (reference UI path)
+
+When hitting only `api-gateway` + static dashboard assets, the dominant
+sequence reduces to synchronous REST calls—still respecting guardrails +
+explicit operator acknowledgement semantics:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Dashboard
+    participant GW as api-gateway
+    participant BUF as Recent buffer
+    participant CUR as Curation pkg
+    participant OR as Orchestrator
+    participant LG as Mock LLM
+    participant CH as auditlog.Chain
+
+    UI->>GW: POST /api/v1/events
+    GW->>BUF: append canonical event
+    GW->>CH: Append ingest
+    GW->>CH: Verify()
+    UI->>GW: GET /api/v1/digest
+    GW->>CUR: Select(...)
+    CUR->>BUF: snapshot inputs
+    GW->>CH: Append digest_selection
+    GW->>CH: Verify()
+    UI->>GW: POST /operator/suggest
+    GW->>OR: Decide(...)
+    OR->>LG: Decide prompt
+    LG-->>OR: structured response
+    OR->>CH: Append decision / rejected_* variants
+    GW->>CH: Verify()
+    GW-->>UI: JSON decision + audit_chain_hash
+    UI->>GW: POST /operator/resolve
+    OR->>CH: Append operator_action
+    GW->>CH: Verify()
+    GW-->>UI: operator_audit_hash
+    UI->>GW: GET /operator/export
+    GW-->>UI: tamper-evident bundle JSON
+```
+
+Buffered alerts populate via the same handlers whenever ingest severity,
+digest heuristics, chain verification, AI review flags, or resolutions fire—see
+PRD §9.1.
+
+### 9.2 Precedent retrieval and operator UX wedge extension
+
+The operator wedge (§9.1) is extended by **`POST /api/v1/operator/suggest-precedents`**
+and the dashboard **Suggested actions** control on critical/error feed rows.
+`internal/precedents` scans the same `auditlog.Store` the gateway and orchestrator
+share (in-memory `Chain` or Postgres when `FLUXLENS_POSTGRES_DSN` is set). Matching
+requires a completed past resolution: a guardrails-passing decision record plus a
+linked `operator_action`. The orchestrator appends **`decision_with_precedents`** on
+success; human resolution still flows through **`operator_action`** only. See
+[PRD — Precedent-informed resolution](PRD.md#precedent-informed-resolution).
+
+```mermaid
+flowchart TB
+    subgraph UI[dashboard]
+        FE[EventFeed]
+        PP[PrecedentResolvePanel]
+        OW[OperatorWedge]
+    end
+    subgraph GW[api-gateway]
+        H[suggest-precedents handler]
+    end
+    subgraph Core[internal]
+        PR[precedents.FindMatches]
+        OR[orchestrator.SuggestWithPrecedents]
+        GR[guardrails]
+        LM[llm.Provider]
+    end
+    subgraph Store[auditlog.Store]
+        CH[(Hash chain<br/>decision*, operator_action)]
+    end
+
+    FE -->|critical/error| PP
+    PP -->|POST suggest-precedents| H
+    OW -->|POST suggest| H
+    H --> PR
+    PR -->|Snapshot| CH
+    H --> OR
+    OR --> GR
+    OR --> LM
+    OR -->|Append decision_with_precedents| CH
+    PP -->|POST resolve| H
+    H -->|RecordOperatorAction| OR
+    OR -->|Append operator_action| CH
+```
 
 ## 10. Observability architecture
 

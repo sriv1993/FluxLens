@@ -63,6 +63,7 @@ build:
 	$(GO) build -o bin/fluxlens-audit-writer  ./cmd/audit-writer
 	$(GO) build -o bin/fluxlens-ingest-mysql  ./cmd/ingest-mysql
 	$(GO) build -o bin/fluxlens-synth-source  ./cmd/synth-source
+	$(GO) build -o bin/fluxlens-chain-verifier ./cmd/chain-verifier
 
 .PHONY: dashboard-install dashboard-dev dashboard-build
 dashboard-install:

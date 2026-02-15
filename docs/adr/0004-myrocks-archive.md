@@ -16,9 +16,8 @@ default archive backend.
 
 ## Rationale
 
-- **Compression.** MyRocks achieves roughly 2:1 storage reduction
-  vs. equivalent InnoDB on FluxLens-shaped workloads, consistent with
-  Vanga & Buthalapalli (2025).
+- **Compression.** MyRocks often achieves roughly 2:1 storage
+  reduction vs. equivalent InnoDB on write-heavy, time-partitioned workloads.
 - **Write amplification.** LSM-tree write amplification is lower than
   B-tree InnoDB for the write-heavy archive workload.
 - **Partition-based purge.** MyRocks supports efficient partition

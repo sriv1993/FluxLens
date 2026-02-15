@@ -24,12 +24,12 @@ import (
 type Orchestrator struct {
 	provider   llm.Provider
 	guardrails *Guardrails
-	chain      *auditlog.Chain
+	chain      auditlog.Store
 	tenant     string
 }
 
 // New returns a configured Orchestrator.
-func New(provider llm.Provider, guardrails *Guardrails, chain *auditlog.Chain, tenant string) *Orchestrator {
+func New(provider llm.Provider, guardrails *Guardrails, chain auditlog.Store, tenant string) *Orchestrator {
 	if guardrails == nil {
 		guardrails = NewDefaultGuardrails()
 	}
@@ -44,15 +44,15 @@ func New(provider llm.Provider, guardrails *Guardrails, chain *auditlog.Chain, t
 
 // Decision is the orchestrator's per-event result.
 type Decision struct {
-	EventID        string
-	Provider       string
-	ModelID        string
-	PromptHash     string
-	Response       Response
-	Guardrails     string // "pass" | "rejected_input" | "rejected_output" | "provider_error"
-	OperatorReview bool   // true if requires_review is set or guardrails marked review
-	AuditChainHash string
-	AuditChainPrev string
+	EventID        string   `json:"event_id"`
+	Provider       string   `json:"provider"`
+	ModelID        string   `json:"model_id"`
+	PromptHash     string   `json:"prompt_hash"`
+	Response       Response `json:"response"`
+	Guardrails     string   `json:"guardrails"` // "pass" | "rejected_input" | "rejected_output" | "provider_error"
+	OperatorReview bool     `json:"operator_review"`
+	AuditChainHash string   `json:"audit_chain_hash"`
+	AuditChainPrev string   `json:"audit_chain_prev"`
 }
 
 // Decide runs the full decision pipeline on a single canonical event.
@@ -146,13 +146,16 @@ func (o *Orchestrator) Decide(ctx context.Context, event canonical.Event, instru
 	}
 	rec, _ := o.chain.Append("decision", map[string]any{
 		"event_id":          event.EventID,
+		"event_type":        event.EventType,
+		"source_id":         event.SourceID,
+		"severity":          string(event.Severity),
 		"provider":          o.provider.Name(),
 		"model_id":          o.provider.ModelID(),
 		"prompt_hash":       dec.PromptHash,
 		"response":          resp,
 		"guardrails_status": dec.Guardrails,
 		"operator_review":   dec.OperatorReview,
-		"tenant":            o.tenant,
+		"tenant":            eventTenant(event, o.tenant),
 	})
 	dec.AuditChainHash = rec.Hash
 	return dec, nil

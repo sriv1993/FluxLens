@@ -1,0 +1,134 @@
+openapi: 3.1.0
+info:
+  title: FluxLens API
+  version: 0.1.0
+  description: |
+    Phase 1 operator wedge — ingest, digest, AI suggestion, human resolution, audit export.
+    When API keys are configured, send `Authorization: Bearer <key>` or `X-API-Key`.
+servers:
+  - url: http://localhost:8090
+paths:
+  /api/v1/health:
+    get:
+      summary: Health and audit-chain status
+      responses:
+        "200":
+          description: OK
+  /api/v1/events:
+    post:
+      summary: Ingest one canonical event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CanonicalEvent"
+      responses:
+        "202":
+          description: Accepted
+  /api/v1/digest:
+    get:
+      summary: Curated digest
+      parameters:
+        - name: strategy
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 6, default: 4 }
+        - name: diversity
+          in: query
+          schema: { type: number, default: 80 }
+        - name: k
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Curation result
+  /api/v1/audit:
+    get:
+      summary: Audit chain snapshot
+      responses:
+        "200":
+          description: Chain records
+  /api/v1/alerts:
+    get:
+      summary: Buffered operator alerts
+      responses:
+        "200":
+          description: Alert list
+    delete:
+      summary: Clear buffered alerts
+      responses:
+        "200":
+          description: Cleared
+  /api/v1/operator/suggest-precedents:
+    post:
+      summary: Precedent-informed resolution steps for an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_id]
+              properties:
+                event_id: { type: string }
+                instruction: { type: string }
+                max_precedents: { type: integer, minimum: 1, maximum: 20, default: 5 }
+      responses:
+        "200":
+          description: Steps, precedents used, and audited decision
+  /api/v1/operator/suggest:
+    post:
+      summary: AI suggestion for an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_id]
+              properties:
+                event_id: { type: string }
+                instruction: { type: string }
+      responses:
+        "200":
+          description: Decision payload
+  /api/v1/operator/resolve:
+    post:
+      summary: Record operator accept / override / annotate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_id, decision_audit_hash, operator_id, action]
+              properties:
+                event_id: { type: string }
+                decision_audit_hash: { type: string }
+                operator_id: { type: string }
+                action: { type: string, enum: [accept, override, annotate] }
+                annotation: { type: string }
+      responses:
+        "200":
+          description: Operator audit hash
+  /api/v1/operator/export:
+    get:
+      summary: Tamper-evident audit bundle for offline review
+      responses:
+        "200":
+          description: Export JSON
+components:
+  schemas:
+    CanonicalEvent:
+      type: object
+      required: [event_id, source_id, source_type, event_type, severity, timestamp, payload]
+      properties:
+        event_id: { type: string }
+        source_id: { type: string }
+        source_type: { type: string }
+        event_type: { type: string }
+        severity: { type: string, enum: [info, warn, error, critical] }
+        timestamp: { type: string, format: date-time }
+        ingested_at: { type: string, format: date-time }
+        payload: { type: object, additionalProperties: true }
+        metadata: { type: object, additionalProperties: true }

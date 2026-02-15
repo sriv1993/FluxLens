@@ -1,6 +1,6 @@
 # FluxLens: An Open-Source Platform for AI-Augmented Industrial Event Curation
 
-*Posted: [LAUNCH DATE]. By Sri Harsha Vanga.*
+*Posted: [LAUNCH DATE].*
 
 > **TL;DR.** FluxLens is a new open-source platform that combines
 > hyper-scale Change Data Capture ingestion, freshness/diversity/
@@ -32,26 +32,22 @@ you face the same composite problem:
 
 The architectural patterns that solve this problem exist. They have
 been built — privately — at large operators. They have not been
-available as an open-source platform you can adopt today.
+widely packaged as an open-source platform you can adopt today.
 
-FluxLens is the first attempt at building one.
+FluxLens is an attempt at building one.
 
 ## What FluxLens is
 
 FluxLens is a composable platform with four layers:
 
 1. **Hyper-scale CDC ingestion.** Read changes from your source
-   systems (MySQL, Postgres, Kafka, webhooks) with zero meaningful
-   impact on the sources themselves. The pattern is the same one I
-   documented at trillion-record-per-month production scale in a
-   recent technical paper.
+   systems (MySQL, Postgres, Kafka, webhooks) with minimal impact
+   on the sources themselves — the same CDC + Kafka idioms common at
+   large industrial scale.
 2. **Curation that knows the operational tradeoffs.** Six
-   configurable selection algorithms balance freshness (operators
-   see the latest), source diversity (no single source monopolizes
-   attention), and redundancy suppression (operators don't see the
-   same event twice). The algorithms generalize work I co-authored
-   on social-media digest systems; the math turns out to apply
-   directly to operational events.
+   configurable selection algorithms balance freshness (operators see
+   the latest), source diversity (no single source monopolizes
+   the digest), and redundancy suppression.
 3. **AI decision support with hard guarantees.** The orchestrator
    calls an LLM through a pluggable provider interface (OpenAI,
    Ollama, vLLM, mock for tests), validates input and output via
@@ -63,7 +59,7 @@ FluxLens is a composable platform with four layers:
    Optional WORM mirroring is supported for high-stakes
    deployments.
 
-## What I built today
+## What shipped today
 
 - A complete, working Phase 1 MVP. `make demo` brings up the stack
   and runs synthetic events through ingestion → curation → AI
@@ -87,67 +83,39 @@ FluxLens is a composable platform with four layers:
 
 - A "trust me, it's production-ready" claim. It isn't. Phase 1 is
   an MVP that works end-to-end on a single machine. Phase 2
-  (production readiness, multi-AZ, hardening) is the next ~3 months
-  of work.
-- Production case studies. There are none yet. If you deploy
-  FluxLens, I'd be very interested in talking.
+  (production readiness, multi-AZ, hardening) is the next stretch of work.
+- Production case studies. There are none yet. Feedback from early
+  adopters is welcome.
 - Closed-source extensions or hosted SaaS. The full platform is
   Apache 2.0 and intended to remain so.
 
-## Why I'm building this
+## Why FluxLens matters
 
-I've spent a decade building these patterns privately at large U.S.
-operators — federally funded research environments, clean-energy
-vehicle manufacturing, national-scale retail and supply chain. The
-patterns are real, they work, and they're nowhere available as
-open source.
+Operational patterns matter for U.S.-critical sectors: clean-energy capacity (IRA §45X), advanced-manufacturing R&D (CHIPS Act), and AI deployment aligned with EO 14110 and the NIST AI RMF.
 
-The U.S. is investing hundreds of billions of dollars into clean-
-energy manufacturing capacity (IRA §45X), advanced manufacturing
-R&D (CHIPS Act), and AI deployment that protects the American
-workforce (EO 14110, NIST AI RMF). Capital creates capacity;
-operational software determines whether capacity becomes output.
-
-I want the operational software that converts that investment into
-output to exist as open source. FluxLens is my contribution.
+This repository exists so those operational patterns — hyper-scale CDC, intelligent event curation, AI with explicit human override, and auditable chains — have a permissively licensed implementation others can fork, harden, and deploy.
 
 ## How to help
 
-If you've thought about these problems — at your employer, in
-research, as a vendor, as an investor — I'd love to hear from you.
-
-- **Try the demo.** `git clone`, `make demo`, tell me what
-  surprised you, what confused you, what would have made you stop
-  using it.
+- **Try the demo.** `git clone`, `make demo`, and send feedback via issues.
 - **Open issues.** Anything that's broken, unclear, or missing.
-- **Star the repo** if you'd like to see this exist.
-- **Build a domain pack** for your sector. The three I've shipped
-  cover clean-energy manufacturing, retail, and federal research.
-  There are obvious gaps: utilities, transportation, healthcare,
-  finance.
+- **Star the repo** if you want to see ongoing development.
+- **Build a domain pack** for your sector. Reference packs shipped for clean-energy manufacturing, retail, and federal research; gaps remain in utilities, transportation, healthcare, finance, and elsewhere.
 - **Contribute a CDC connector** for a source FluxLens doesn't yet
   support (Postgres logical replication, MongoDB change streams,
   CockroachDB CDC, etc.).
-- **Write about it.** If FluxLens-shaped infrastructure helps your
-  organization, a public mention is one of the most useful things
-  you can do.
+- **Write about it** if FluxLens-shaped infrastructure helps your organization.
 
-If you'd like to talk about a deployment, sponsorship, or
-collaboration: sriharshav1@gmail.com.
+Technical discussion: https://github.com/sriharshav1/fluxlens/discussions
 
 ## What's next
 
 The roadmap is at `ROADMAP.md` in the repository. Phase 1 (the
-MVP) is what shipped today. Phase 2 takes the platform to
+MVP) is what shipped. Phase 2 takes the platform toward
 production-readiness: full Postgres CDC, multi-AZ deployment with
 chaos testing, OAuth2/OIDC and RBAC, Sigstore image signing,
 Helm-chart hardening, comprehensive observability. Phase 3
-(roughly mid-2027) is ecosystem and integrations — Helm chart in
-public catalogs, AWS Marketplace listing, Splunk and Elastic
-integrations, plugin SDK, formal community steering committee.
+covers ecosystem integrations — catalogs, Marketplace listings,
+SIEM integrations, plugin SDKs, formal community steering.
 
 Thanks for reading.
-
-— Sri Harsha Vanga
-sriharshav1@gmail.com
-linkedin.com/in/sriharshav1

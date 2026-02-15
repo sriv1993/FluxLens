@@ -1,17 +1,6 @@
 // Package curation implements the FluxLens curation engine — the layer that
 // transforms raw event streams into curated digests balancing freshness,
-// source diversity, and redundancy suppression.
-//
-// The six selection strategies implemented here generalize the algorithms
-// originally proposed in:
-//
-//	Buthalapalli, Y. & Vanga, S. H. (2025). "Balancing Freshness and Diversity
-//	in Social Media Digest Systems."
-//
-// The original paper applied these strategies to social-media digest
-// generation; the same formal objective — maximize freshness, ensure source
-// coverage, minimize redundancy — applies directly to industrial event
-// curation, which is what FluxLens uses them for.
+// source diversity, and redundancy suppression using six selectable strategies.
 package curation
 
 import (
@@ -23,8 +12,7 @@ import (
 	"github.com/sriharshav1/fluxlens/internal/canonical"
 )
 
-// Strategy enumerates the six selection strategies. Numbering matches the
-// original paper's algorithm catalog.
+// Strategy enumerates the six selection strategies (stable numbering for API compatibility).
 type Strategy int
 
 const (

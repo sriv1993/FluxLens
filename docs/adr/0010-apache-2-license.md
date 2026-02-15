@@ -7,8 +7,8 @@
 
 FluxLens needs a license that maximizes adoption across the target
 operator base (U.S. clean-energy manufacturers, national retailers,
-federal labs, regulated industries) while preserving the project lead's
-ability to contribute to the project's long-term direction.
+federal labs, regulated industries) while preserving contributors'
+ability to steer the project's long-term direction.
 
 ## Decision
 

@@ -35,7 +35,7 @@ Examples of unacceptable behavior include:
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may
-be reported to the project lead at sriharshav1@gmail.com. All
+be reported as described in [`SECURITY.md`](./SECURITY.md). All
 complaints will be reviewed and investigated promptly and fairly.
 
 The full Contributor Covenant text is available at the link above.

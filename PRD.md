@@ -1,7 +1,5 @@
 # FluxLens — Product Requirements Document
 
-> **Author:** Sri Harsha Vanga
-
 ## 1. Executive Summary
 
 FluxLens is an open-source platform for AI-augmented industrial event
@@ -27,8 +25,7 @@ FluxLens provides a single composable platform that:
 4. Produces a verifiable, immutable audit trail for every decision —
    appropriate for sectors subject to federal compliance requirements.
 
-The project is the open-source counterpart to two prior research
-efforts published by the project lead. It is targeted at U.S.
+The project bundles these operational patterns into a single open-source reference implementation. It is targeted at U.S.
 operators in sectors identified by federal policy (Inflation
 Reduction Act §45X, CHIPS and Science Act, CISA-designated critical
 infrastructure, NIST AI Risk Management Framework) as strategically
@@ -72,9 +69,9 @@ In each environment, operators face the same composite problem:
 - **AI assistants (off-the-shelf LLM copilots)** prioritize events
   but lack the verifiable human-override and audit guarantees
   required for federally compliant deployment.
-- **Internal one-off solutions** built inside Tesla, Walmart, PNNL,
-  and similar operators solve the problem for one organization but
-  are not reusable open-source artifacts.
+- **Internal one-off solutions** built inside individual large
+  operators solve the problem for one organization but are not
+  reusable open-source artifacts.
 
 FluxLens is the first open-source platform to combine all four
 capabilities — hyper-scale CDC ingestion, freshness/diversity/
@@ -295,9 +292,8 @@ flowchart LR
 meaningful impact on source performance.
 
 **Components.**
-- **MySQL CDC connector** — based on the Maxwell pattern documented
-  in the project lead's prior paper (Vanga & Buthalapalli, 2025).
-  Reads MySQL binlog, emits JSON-formatted change events to Kafka.
+- **MySQL CDC connector** — based on Maxwell/Debezium-style binlog
+  following with JSON change events emitted to Kafka.
 - **Postgres CDC connector** — uses logical replication slots and
   `pgoutput` plugin to capture row-level changes.
 - **Kafka consumer** — for environments where events are already on
@@ -323,14 +319,10 @@ horizontally scalable to 32 pods.
 the ingested event stream, producing a curated digest stream for
 downstream decision support.
 
-**Algorithmic basis.** Generalizes the digest-selection algorithms
-from Buthalapalli & Vanga (2025), originally developed for social
-media digest systems, to industrial event streams. The same
-formal objective — maximize freshness, ensure source diversity,
-minimize redundancy — applies.
+**Algorithmic basis.** Six strategies balance freshness (recency),
+source diversity, and redundancy suppression on industrial event streams.
 
-**Six configurable selection strategies** (matching the original
-paper's algorithm catalog, adapted to operational events):
+**Six configurable selection strategies:**
 
 1. **Latest events** — pure freshness. Returns the `k` most recent
    events regardless of source.
@@ -391,7 +383,7 @@ generated, and every operator action taken.
   any tampering breaks the chain and is detectable.
 - **Schema-validated.** Audit records conform to a versioned schema.
 - **Retention-policy aware.** Per-record TTL with partition-level
-  drop for efficient purge (pattern from Vanga & Buthalapalli 2025).
+  drop for efficient retention purge common on LSM-style archive tiers.
 
 **Compliance alignment.**
 - Authentication and access control patterns aligned with federal IT
@@ -414,6 +406,31 @@ operator actions to dashboards and integrations.
 - `POST /api/v1/config/sources` — register a new source
 - `POST /api/v1/config/reload` — hot-reload configuration
 
+**Implemented reference slice (`cmd/api-gateway`, Phase 1 demo).**
+The shipping gateway exposes an end-to-end **operator wedge** on a
+single in-memory audit chain: ingest canonical events, compute a
+curated digest, obtain a mock-LLM orchestrator suggestion with
+guardrails, record an explicit operator accept/override/annotate
+action, and export the chain as JSON. Operator-visible **alerts**
+(ingest severity, digest-quality heuristics, chain-verification
+transitions, review-required AI outcomes) buffer in-process for the
+dashboard; they are **not** persisted or forwarded to paging systems
+in this build.
+
+Concrete REST handlers today:
+
+- `GET /api/v1/health` — liveness plus audit-chain verification summary and buffered alert count
+- `POST /api/v1/events` — accept one validated canonical event into the recent-events buffer with `ingest` audit append
+- `GET /api/v1/digest` — query parameters `strategy`, `diversity`, `k`; returns curated selection; appends **`digest_selection`** audit record (distinct from orchestrator AI records)
+- `GET /api/v1/audit` — snapshot hash chain with verifier status
+- `GET /api/v1/alerts` / `DELETE /api/v1/alerts` — list or clear buffered operator alerts
+- `POST /api/v1/operator/suggest` — JSON body `{ event_id, instruction? }`; runs `internal/orchestrator` on the shared chain using a bundled manufacturing-line supervisor prompt when `instruction` is omitted
+- `POST /api/v1/operator/suggest-precedents` — JSON body `{ event_id, instruction?, max_precedents? }`; retrieves similar past `operator_action` + `decision` rows from the audit chain, calls the LLM with precedent context, returns `steps[]` (optional `cited_precedent_hash`) plus a `decision` audited as **`decision_with_precedents`**
+- `POST /api/v1/operator/resolve` — JSON body `{ event_id, decision_audit_hash, operator_id, action, annotation }`; values of `action` are `accept`, `override`, or `annotate`; appends **`operator_action`**
+- `GET /api/v1/operator/export` — JSON bundle for offline evidence review (records + verification metadata)
+
+**Non-goals for this slice:** OAuth/RBAC enforcement on these routes (Phase 2), durable alert storage, external webhook dispatch, running orchestrator as a separate replica set (still supported later via existing `cmd/orchestrator`).
+
 ### 6.6 Operator dashboard
 
 **Purpose.** Reference web UI for operators consuming the FluxLens
@@ -421,7 +438,10 @@ event stream.
 
 **Capabilities (Phase 1).**
 - Live curated event feed with strategy selector
-- AI suggestion panel per event
+- **Precedent-informed resolution:** on **critical** and **error** feed rows, **Suggested actions** opens a panel that calls `POST /operator/suggest-precedents`, shows ranked steps (with optional precedent citations), then links to accept / override / annotate (human-only; no autonomous moves)
+- **Operator wedge strip:** choose digest row → mock AI suggestion → submit audited accept / override / annotate → download audit bundle
+- Buffered alerts panel with severity cues (demo persistence only)
+- AI suggestion panel per event (legacy wording; wedge consolidates flow)
 - One-click override / accept / annotate
 - Filter by source, severity, time window
 - Audit log viewer (read-only)
@@ -430,10 +450,62 @@ event stream.
 **Stack.** TypeScript + React; deployed as a static asset behind the
 API gateway.
 
+#### Precedent-informed resolution
+
+Operators resolving **critical** or **error** events can request
+**Suggested actions** from the event feed. The gateway scans the
+tamper-evident audit chain for prior `decision` / `decision_with_precedents`
+records that share `event_type`, `source_id`, `severity`, and tenant,
+joined to a recorded `operator_action`. Top-k precedents enrich the LLM
+prompt; the response is surfaced as ordered `steps[]` with optional
+`cited_precedent_hash`. The operator must still **accept**, **override**,
+or **annotate** via `POST /operator/resolve` — the system never executes
+operational moves autonomously.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant OP as Operator
+    participant UI as Dashboard
+    participant GW as api-gateway
+    participant PR as precedents matcher
+    participant OR as Orchestrator
+    participant LM as LLM provider
+    participant CH as Audit chain
+
+    OP->>UI: Suggested actions (critical/error row)
+    UI->>GW: POST /operator/suggest-precedents
+    GW->>CH: Snapshot chain (memory or Postgres DSN)
+    GW->>PR: Match event_type, source_id, severity, tenant
+    PR-->>GW: Top-k resolved precedents
+    GW->>OR: SuggestWithPrecedents(event, precedents)
+    OR->>LM: Context + precedent summaries
+    LM-->>OR: Classification + suggestion
+    OR->>CH: Append decision_with_precedents
+    OR-->>GW: steps[] + decision
+    GW-->>UI: Steps + audit_chain_hash
+    OP->>UI: Review steps, choose action
+    UI->>GW: POST /operator/resolve
+    GW->>CH: Append operator_action
+    GW-->>UI: operator_audit_hash
+```
+
+```mermaid
+flowchart TD
+    A[Audit chain snapshot] --> B{Record kind?}
+    B -->|decision or decision_with_precedents| C[Extract event_type, source_id, severity, tenant, response]
+    B -->|operator_action| D[Link decision_id to action + annotation]
+    C --> E{All four dimensions match current event?}
+    D --> E
+    E -->|yes| F[Rank by recency]
+    E -->|no| G[Skip]
+    F --> H[Cap at max_precedents]
+    H --> I[Inject into LLM prompt]
+```
+
 ## 7. Curation Algorithms
 
-The curation algorithms generalize the framework from Buthalapalli &
-Vanga (2025) to industrial event streams. Formal restatement:
+Formal restatement of the freshness / diversity / redundancy tradeoff served by §6.2:
 
 Let \( S = \{s_1, s_2, \ldots, s_n\} \) be the set of registered
 event sources. Let \( E_i = \{e_{i,1}, e_{i,2}, \ldots\} \) be the
@@ -504,6 +576,22 @@ operators remain responsible for end-to-end compliance of their
 deployment. FluxLens provides the architectural primitives that make
 compliant deployment achievable.
 
+### 9.1 Operator alerting (Phase 1 demo adjunct)
+
+Buffered **operator alerts** complement—but do not replace—the
+tamper-evident audit log. Demo rules emit structured notifications when:
+
+- Canonical ingest severity is **warn** or higher (`ingest.severity_warn_or_above`).
+- Digest quality metrics cross heuristic thresholds (`digest.low_freshness`, `digest.low_diversity`, `digest.sparse_selection`).
+- Gateway verification observes an audit-chain transition from valid to broken (`platform.audit_chain_invalid`).
+- AI suggestions require explicit human review (`operator.review_required`).
+- An operator resolution is recorded (`operator.resolution_recorded`).
+
+Alerts apply short **dedupe windows** per rule (and per `event_id`
+when present) so periodic dashboard polling does not amplify noise.
+Production deployments SHALL persist alerts, attach routing policies per
+tenant, and integrate with paging or ticketing systems (Phase 2+).
+
 ## 10. Data Models
 
 ### 10.1 Canonical event schema
@@ -545,9 +633,30 @@ compliant deployment achievable.
 }
 ```
 
+### 10.3 Audit chain record kinds (Phase 1 gateway)
+
+Gateway-demonstrator writers append hash-chained records with string
+**kind** discriminators including at minimum:
+
+| Kind | Producer | Purpose |
+|------|-----------|---------|
+| `system` | Gateway bootstrap | Startup / heartbeat marker |
+| `ingest` | Gateway | Canonical event accepted into RAM buffer |
+| `digest_selection` | Gateway | Curation strategy summary (`strategy`, diversity, `k`, counts) |
+| `decision` | Orchestrator | Passing AI suggestion after guardrails |
+| `decision_rejected_input` / `decision_rejected_output` / `decision_provider_error` | Orchestrator | Guardrail or provider failures |
+| `operator_action` | Gateway wrapper around orchestrator | Human accept / override / annotate referencing prior decision hash |
+
+Kinds live inside the opaque payload verified by the chain; ordering is
+total across producers sharing one gateway **process** for the Phase 1
+reference deployment.
+
 ## 11. API Design
 
-See §6.5 for endpoint surface. All endpoints:
+### 11.1 Production target
+
+See §6.5 for the intended long-lived endpoint surface. Target deployment
+requirements:
 
 - Authenticate via OAuth2 (PKCE for browser clients, client-credentials
   for service-to-service)
@@ -556,7 +665,24 @@ See §6.5 for endpoint surface. All endpoints:
 - Emit OpenTelemetry traces for end-to-end observability
 
 OpenAPI 3.1 specification will be maintained in `/api/openapi.yaml`
-once Phase 1 implementation begins.
+once the production gateway stabilizes beyond the Phase 1 wedge.
+
+### 11.2 Phase 1 reference REST (`cmd/api-gateway`)
+
+The Phase 1 binary documents its concrete handlers in §6.5 under
+“Implemented reference slice.” Behavioral contracts worth preserving in
+reviews:
+
+1. **Single-chain invariant.** Ingest, digest selection, orchestrator
+   outputs, and operator resolutions serialize through one in-memory
+   `auditlog.Chain` instance so demos can prove ordering and verifier
+   semantics cheaply.
+2. **Human-first semantics.** `/operator/suggest` never executes physical
+   plant actions; `/operator/resolve` records intent only after explicit
+   operator submission through the dashboard or API.
+3. **Export posture.** `/operator/export` returns verifier metadata plus
+   raw records suitable for auditor tooling; it is not yet a signed legal
+   export (Phase 2 adds KMS-backed attestations as tracked in [ROADMAP.md](./ROADMAP.md)).
 
 ## 12. Quality Requirements
 
@@ -582,6 +708,9 @@ See [ROADMAP.md](./ROADMAP.md) for full detail. Summary:
 - **Phase 3 :** Ecosystem and integrations — Helm
   charts, Terraform modules, SIEM integrations, plugin marketplace.
 
+Future capabilities (multi-tenant, federation, KMS signing, integrations,
+etc.) live in [`ROADMAP.md`](./ROADMAP.md) rather than here.
+
 ## 14. Comparison to Existing Systems
 
 | System | Ingestion | Curation | AI w/ override | Federal-grade audit | Open source |
@@ -600,157 +729,26 @@ See [ROADMAP.md](./ROADMAP.md) for full detail. Summary:
 - **Code of conduct:** Contributor Covenant v2.1.
 - **Contribution model:** Pull-request based; signed-commit policy
   (DCO).
-- **Decision-making:** Benevolent maintainer (project lead) until a
-  steering committee is formed at Phase 2.
+- **Decision-making:** Maintainer-led until a steering committee is formed at Phase 2.
 - **Release cadence:** Monthly minor releases after Phase 2 GA.
 
-## 16. Additional Features and Components (Phases 2–3)
+## 16. References
 
-Re-analysis of the platform surface, prior research papers, and the
-three target application domains identified additional capabilities
-that significantly increase FluxLens's value to U.S.-critical
-operators. These are scheduled across Phases 2 and 3 of the
-[ROADMAP](./ROADMAP.md).
-
-### 16.1 Multi-tenancy and organization isolation
-
-Single FluxLens deployment, multiple tenant organizations. Per-tenant
-namespacing across every store (canonical events, decisions, audit
-log), per-tenant RBAC, and per-tenant configuration overlays.
-Operational pattern: a manufacturing-services company providing
-managed FluxLens to multiple manufacturer clients; a federal lab
-hosting FluxLens for multiple research programs.
-
-### 16.2 Federation / multi-cluster mode
-
-Geographically distributed FluxLens clusters (per-region, per-site,
-per-availability-zone) federated through asynchronous event
-replication and global audit-log reconciliation. Use cases:
-clean-energy manufacturer with multiple U.S. gigafactories; national
-retailer with regional distribution centers; DOE multi-laboratory
-research coordination.
-
-### 16.3 Domain pack system
-
-Pluggable operator-defined domain configurations (event ontologies,
-severity escalation rules, role definitions, recommended curation
-settings) packaged as YAML manifests and shipped under
-`pkg/domainpack/`. Reference packs for clean-energy battery
-manufacturing, retail-supply-chain resilience, federal research
-coordination. Operators may publish private domain packs for
-internal use.
-
-### 16.4 Anomaly detection module
-
-Statistical (EWMA, IQR, Mahalanobis) and ML-based (isolation forest,
-autoencoder) anomaly detection layered between ingestion and
-curation. Anomalous events are flagged with `requires_review` and
-prioritized in the curation engine independent of source-defined
-severity.
-
-### 16.5 KMS-signed audit log
-
-Phase 2 extension: each audit record is signed with a per-deployment
-KMS-backed key in addition to being hash-chained. Supports
-deployments requiring strict non-repudiation (e.g., warranty claim
-defensibility, regulatory submission, evidentiary use).
-
-### 16.6 Air-gapped deployment mode
-
-Complete operational mode for deployments that cannot make outbound
-network calls. Local LLM providers (Ollama, vLLM), mirrored
-container registry, local-only telemetry export. Designed for DOE
-national-laboratory environments and federally regulated sectors.
-
-### 16.7 Replay system
-
-Replay historical event streams against new model versions, new
-curation strategies, or new policy configurations. Enables
-backtesting and A/B evaluation of model changes before production
-deployment. Backed by the archive tier and surfaced via the admin
-API.
-
-### 16.8 Policy engine
-
-Operator-defined policies expressed in Rego (Open Policy Agent)
-evaluated by the orchestrator before any AI suggestion is surfaced.
-Examples: "do not surface suggestions involving facility X to
-operators outside the safety-officer role", "always require
-two-operator review for events with severity == critical",
-"prohibit autonomous mode under all conditions" (the platform-level
-default, expressible as policy for auditor inspection).
-
-### 16.9 Edge ingestion gateway
-
-Lightweight ingestion gateway for OT/manufacturing environments
-where the FluxLens cluster sits behind a firewall and on-floor
-agents push events outbound. Supports buffered offline operation
-during network partition (replays buffered events on reconnect).
-
-### 16.10 Multi-LLM ensemble
-
-Phase 2/3 capability: route a decision through multiple LLM
-providers in parallel, evaluate response consistency, surface
-divergence to operator review. Defends against single-provider
-degradation and supports model-comparison workflows.
-
-### 16.11 PII detection and redaction
-
-Phase 2 module: pluggable PII detector (regex baselines for SSN,
-phone, email; ML-based for free-form text) integrated into the
-ingestion normalizer and audit-log writer. PII fields are redacted
-in the audit log by default with policy-controlled un-redaction for
-authorized auditors.
-
-### 16.12 Cost observability (FinOps)
-
-Per-deployment cost telemetry: per-tenant LLM cost attribution,
-per-source ingestion cost attribution, per-archive-partition
-storage cost. Exported via Prometheus metrics for operator
-dashboards.
-
-### 16.13 Model registry integration
-
-Phase 3: integration with standard MLOps model registries (MLflow,
-Weights & Biases) for tracking deployed model versions, shadow-mode
-evaluation results, and rollback history.
-
-### 16.14 Time-travel queries
-
-Phase 3: query historical operator surface state at any prior
-timestamp, supporting "what did the operator see at time T?"
-queries for after-action review, regulatory inquiry, and warranty
-defense.
-
-### 16.15 Integration plugin catalog
-
-Phase 3: published catalog of integrations (Splunk, Elastic,
-PagerDuty, Opsgenie, ServiceNow, Slack, Microsoft Teams, custom
-webhooks) packaged as installable plugins with operator-managed
-configuration.
-
-## 17. References
-
-1. Vanga, S. H., & Buthalapalli, Y. (2025). *High-Throughput Archival
-   and Purge System Using Maxwell CDC: Achieving Trillion-Scale
-   Database Management with Zero Production Impact.*
-2. Buthalapalli, Y., & Vanga, S. H. (2025). *Balancing Freshness and
-   Diversity in Social Media Digest Systems.*
-3. National Institute of Standards and Technology, *Artificial
+1. National Institute of Standards and Technology, *Artificial
    Intelligence Risk Management Framework (NIST AI 100-1)*, January
    2023.
-4. Executive Order 14110, *Safe, Secure, and Trustworthy Development
+2. Executive Order 14110, *Safe, Secure, and Trustworthy Development
    and Use of Artificial Intelligence*, 88 Fed. Reg. 75191 (October
    30, 2023).
-5. M. Callaghan et al., *MyRocks: A Space- and Write-Optimized MySQL
+3. M. Callaghan et al., *MyRocks: A Space- and Write-Optimized MySQL
    Database*, Facebook Engineering Blog, 2016.
-6. J. Kreps, N. Narkhede, J. Rao, *Kafka: A Distributed Messaging
+4. J. Kreps, N. Narkhede, J. Rao, *Kafka: A Distributed Messaging
    System for Log Processing*, Proceedings of NetDB Workshop, 2011.
-7. Inflation Reduction Act of 2022, Pub. L. 117-169.
-8. CHIPS and Science Act of 2022, Pub. L. 117-167.
-9. Presidential Policy Directive 21, *Critical Infrastructure Security
+5. Inflation Reduction Act of 2022, Pub. L. 117-169.
+6. CHIPS and Science Act of 2022, Pub. L. 117-167.
+7. Presidential Policy Directive 21, *Critical Infrastructure Security
    and Resilience* (February 12, 2013).
-10. Federal Emergency Management Agency, *National Preparedness Goal*,
+8. Federal Emergency Management Agency, *National Preparedness Goal*,
     Second Edition (September 2015).
-11. NIST Special Publication 800-53 Rev. 5, *Security and Privacy
+9. NIST Special Publication 800-53 Rev. 5, *Security and Privacy
     Controls for Information Systems and Organizations*.

@@ -31,13 +31,11 @@ flowchart LR
 ```
 
 - **Ingest** change events from real source systems with zero impact
-  on the source. The CDC pattern at the heart of FluxLens has been
-  deployed in production at trillion-records-per-month scale (see
-  reference paper below).
+  on the source. FluxLens adopts the CDC + Kafka + durable-store
+  patterns common at very large-scale industrial operators.
 - **Curate** the resulting stream so operators see what matters.
-  Six selection strategies, each tunable, generalizing the
-  freshness/diversity/redundancy framework from a published research
-  paper.
+  Six tunable strategies that prioritize freshness, source diversity,
+  and redundancy suppression.
 - **Augment** operator decisions with LLM-generated context,
   classification, and suggested action — under hard human-override
   and audit guarantees enforced *in code*, not in policy.
@@ -83,6 +81,19 @@ cd dashboard && npm install && npm run dev
 
 Full quickstart (Kafka + curator + orchestrator): [`docs/tutorials/01-quickstart.md`](./docs/tutorials/01-quickstart.md).
 
+**Durable audit (local Postgres):** after `make dev`, run the gateway with  
+`FLUXLENS_POSTGRES_DSN=postgres://fluxlens:fluxlens-dev@localhost:5432/fluxlens?sslmode=disable`  
+and verify with `bin/fluxlens-chain-verifier`. See [`docs/PRODUCTION_CHECKLIST.md`](./docs/PRODUCTION_CHECKLIST.md).
+
+**MySQL CDC:** grant `REPLICATION CLIENT` and `REPLICATION SLAVE`, set `binlog_format=ROW`, then:
+
+```bash
+./bin/fluxlens-ingest-mysql \
+  --dsn 'user:pass@tcp(localhost:3306)/mydb' \
+  --kafka localhost:9092 \
+  --tables 'mydb.orders,mydb.inventory'
+```
+
 ## Why this matters
 
 The U.S. is investing hundreds of billions of dollars in clean-energy
@@ -97,8 +108,22 @@ event curation, AI with verifiable human override, federal-grade
 audit — exist privately at large operators. FluxLens makes them
 available as open source.
 
-- [`docs/national-interest/`](./docs/national-interest/) — alignment
-  with IRA, CHIPS, DOE, CISA critical infrastructure, FEMA, EO 14110
+### National interest in brief
+
+FluxLens is aimed at domains U.S. policy treats as strategically
+important:
+
+- **Clean-energy / advanced manufacturing (IRA §45X, CHIPS-era
+  toolkit)** — high-velocity telemetry, yield and quality signals, and
+  auditable decision support as domestic capacity scales.
+- **Critical-infrastructure operations (notably commercial facilities
+  & food/ag under PPD‑21)** — balancing noisy streams with localized
+  response, continuity signals, and defensible audit trails during
+  stress.
+- **Federally aligned research & regulated environments** — human
+  override, hash-chained records, and air‑gap-friendly deployment
+  postures mapped toward NIST AI RMF / SP 800‑53–style disciplines.
+
 - [`docs/compliance/`](./docs/compliance/) — NIST AI RMF, NIST SP
   800-53 control mappings, FedRAMP readiness posture
 - [`docs/domain-packs/`](./docs/domain-packs/) — reference packs for
@@ -128,7 +153,7 @@ available as open source.
 - ✅ docker-compose stack for local dev
 - ✅ Helm chart skeleton for Kubernetes deployment
 - ✅ Full documentation and compliance mapping
-- ⏳ MySQL CDC connector (skeleton; full binlog reader Phase 1 M1.3)
+- ✅ MySQL CDC connector (binlog replication via go-mysql; `-tables`, `-binlog-file`)
 - ⏳ Postgres CDC connector (Phase 2 M2.1)
 - ⏳ Production-ready Postgres-backed audit chain (Phase 2)
 - ⏳ Multi-AZ deployment with chaos testing (Phase 2 M2.6)
@@ -145,24 +170,7 @@ This is real software. It is not yet production-ready software. See
 | 🐛 **Report issues** | https://github.com/sriharshav1/fluxlens/issues |
 | ✍️ **Contribute** | See [`CONTRIBUTING.md`](./CONTRIBUTING.md). PRs welcome on docs, code, tests, domain packs |
 | 🔒 **Security** | See [`SECURITY.md`](./SECURITY.md) |
-| 💬 **Talk** | sriharshav1@gmail.com / linkedin.com/in/sriharshav1 |
-
-## Research provenance
-
-FluxLens synthesizes architectural patterns from two published
-technical papers by the project lead:
-
-> Vanga, S. H. & Buthalapalli, Y. (2025). *High-Throughput Archival
-> and Purge System Using Maxwell CDC: Achieving Trillion-Scale
-> Database Management with Zero Production Impact.* The ingestion
-> and archive architecture of FluxLens extends the CDC + Kafka +
-> LSM-tree pattern documented here.
-
-> Buthalapalli, Y. & Vanga, S. H. (2025). *Balancing Freshness and
-> Diversity in Social Media Digest Systems.* The curation
-> algorithms in FluxLens generalize the freshness/diversity/
-> redundancy framework from this paper, applied to industrial
-> event streams.
+| 💬 **Talk** | Open a [GitHub discussion](https://github.com/sriharshav1/fluxlens/discussions) |
 
 ## License
 
@@ -172,7 +180,7 @@ Apache License 2.0 — see [`LICENSE`](./LICENSE).
 
 ```bibtex
 @misc{fluxlens2025,
-  author       = {Vanga, Sri Harsha},
+  author       = {{FluxLens contributors}},
   title        = {FluxLens: An Open-Source Platform for AI-Augmented
                   Industrial Event Curation and Decision Support},
   year         = {2025},

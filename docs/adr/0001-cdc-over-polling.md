@@ -2,7 +2,6 @@
 
 - **Status:** Accepted
 - **Date:** 2025-11-20
-- **Author:** Sri Harsha Vanga
 
 ## Context
 
@@ -38,10 +37,9 @@ CDC has decisive advantages for FluxLens's use case:
 - **Operational legibility.** CDC offsets are durable, recoverable,
   and observable; polling state is more fragile.
 
-The project lead's prior production deployment of this pattern at
-Tesla — documented in Vanga & Buthalapalli (2025) — sustained
-trillion-record-monthly throughput with zero replication lag on
-source systems, confirming the pattern at production scale.
+Large industrial operators routinely run CDC-based pipelines at
+warehouse-to-petabyte monthly scale with minimal source impact; that
+operational track record supports this choice for FluxLens.
 
 ## Consequences
 
@@ -62,7 +60,5 @@ source systems, confirming the pattern at production scale.
 
 ## References
 
-- Vanga, S. H. & Buthalapalli, Y. (2025). *High-Throughput Archival
-  and Purge System Using Maxwell CDC.*
 - Maxwell project: https://github.com/zendesk/maxwell
 - Debezium project: https://debezium.io/

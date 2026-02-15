@@ -66,7 +66,7 @@ func (c *Chain) Append(kind string, payload any) (Record, error) {
 		Payload:   pb,
 		PrevHash:  c.headHash,
 	}
-	h, err := computeHash(&rec)
+	h, err := ComputeHash(&rec)
 	if err != nil {
 		return Record{}, err
 	}
@@ -83,21 +83,31 @@ func (c *Chain) Append(kind string, payload any) (Record, error) {
 func (c *Chain) Verify() (bool, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	return VerifyRecords(c.records)
+}
+
+// VerifyRecords checks an ordered slice of records (used by in-memory and Postgres stores).
+func VerifyRecords(records []Record) (bool, error) {
 	prev := ""
-	for i := range c.records {
-		expected, err := computeHashWithPrev(&c.records[i], prev)
+	for i := range records {
+		expected, err := computeHashWithPrev(&records[i], prev)
 		if err != nil {
 			return false, err
 		}
-		if c.records[i].Hash != expected {
+		if records[i].Hash != expected {
 			return false, nil
 		}
-		if c.records[i].PrevHash != prev {
+		if records[i].PrevHash != prev {
 			return false, nil
 		}
-		prev = c.records[i].Hash
+		prev = records[i].Hash
 	}
 	return true, nil
+}
+
+// ComputeHash computes a Record's hash using its current PrevHash field.
+func ComputeHash(r *Record) (string, error) {
+	return computeHashWithPrev(r, r.PrevHash)
 }
 
 // Len returns the number of records currently in the chain.
@@ -121,11 +131,6 @@ func (c *Chain) Snapshot() []Record {
 	out := make([]Record, len(c.records))
 	copy(out, c.records)
 	return out
-}
-
-// computeHash computes a Record's hash using its current PrevHash field.
-func computeHash(r *Record) (string, error) {
-	return computeHashWithPrev(r, r.PrevHash)
 }
 
 // computeHashWithPrev computes the canonical hash for r assuming the

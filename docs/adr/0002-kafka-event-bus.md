@@ -16,10 +16,9 @@ such as Redpanda or Strimzi) as the event bus.
 
 ## Rationale
 
-- **Operational maturity at scale.** Kafka is production-proven at the
-  trillion-record-per-month scale FluxLens targets (cited in Vanga &
-  Buthalapalli, 2025). Alternatives are credible but have less production
-  evidence at this scale.
+- **Operational maturity at scale.** Kafka is production-proven at
+  the very high event volumes FluxLens targets at large operators,
+  with substantial public case studies and tooling.
 - **Ecosystem.** Mature client libraries, monitoring tooling, and
   CDC-connector integrations (Maxwell, Debezium).
 - **Operator familiarity.** Most large-scale operators already run Kafka;

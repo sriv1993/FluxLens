@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -27,17 +28,32 @@ func main() {
 	serverID := flag.Uint("server-id", 1000, "Unique MySQL replication server-id")
 	sourceID := flag.String("source-id", "mysql-source", "Canonical source_id for emitted events")
 	heartbeat := flag.Duration("heartbeat", 30*time.Second, "Heartbeat interval")
+	tables := flag.String("tables", "", "Comma-separated db.table allowlist (empty = all)")
+	binlogFile := flag.String("binlog-file", "", "Optional binlog file to start from")
+	binlogPos := flag.Uint("binlog-pos", 0, "Optional binlog position when -binlog-file is set")
 	flag.Parse()
 
 	if *dsn == "" {
 		log.Fatal("--dsn required")
 	}
 
+	var tableList []string
+	if strings.TrimSpace(*tables) != "" {
+		for _, t := range strings.Split(*tables, ",") {
+			t = strings.TrimSpace(t)
+			if t != "" {
+				tableList = append(tableList, t)
+			}
+		}
+	}
 	connector, err := cdcmysql.New(cdcmysql.Config{
 		DSN:               *dsn,
 		ServerID:          uint32(*serverID),
 		SourceID:          *sourceID,
 		HeartbeatInterval: *heartbeat,
+		Tables:            tableList,
+		BinlogFile:        *binlogFile,
+		BinlogPos:         uint32(*binlogPos),
 	})
 	if err != nil {
 		log.Fatalf("new connector: %v", err)

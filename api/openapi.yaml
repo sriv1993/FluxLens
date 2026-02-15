@@ -117,6 +117,35 @@ paths:
       responses:
         "200":
           description: Export JSON
+  /api/v1/stream:
+    get:
+      summary: WebSocket live feed (event, digest, decision messages)
+      description: Upgrade to WebSocket. Optional API key via Authorization or X-API-Key when keys are configured.
+  /api/v1/webhook:
+    post:
+      summary: Ingest webhook-shaped event into gateway buffer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source_id, event_type]
+              properties:
+                source_id: { type: string }
+                event_type: { type: string }
+                severity: { type: string }
+                payload: { type: object }
+                timestamp: { type: string, format: date-time }
+      responses:
+        "202":
+          description: Accepted
+  /api/v1/decisions:
+    get:
+      summary: Recent orchestrator decisions (from Kafka bridge when enabled)
+      responses:
+        "200":
+          description: Decision list
 components:
   schemas:
     CanonicalEvent:

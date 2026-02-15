@@ -24,7 +24,7 @@ func APIKeyMiddleware(keys []string, next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		key := extractKey(r)
+		key := ExtractKey(r)
 		if _, ok := allowed[key]; !ok {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
@@ -35,14 +35,15 @@ func APIKeyMiddleware(keys []string, next http.Handler) http.Handler {
 
 func isPublicPath(path string) bool {
 	switch path {
-	case "/api/v1/health", "/metrics", "/api/openapi.yaml":
+	case "/api/v1/health", "/metrics", "/api/openapi.yaml", "/api/v1/stream":
 		return true
 	default:
 		return false
 	}
 }
 
-func extractKey(r *http.Request) string {
+// ExtractKey returns the API key from the request headers.
+func ExtractKey(r *http.Request) string {
 	if h := r.Header.Get("X-API-Key"); h != "" {
 		return strings.TrimSpace(h)
 	}
@@ -56,6 +57,21 @@ func extractKey(r *http.Request) string {
 // KeysFromEnv splits FLUXLENS_API_KEYS on commas.
 func KeysFromEnv() []string {
 	return SplitKeys(os.Getenv("FLUXLENS_API_KEYS"))
+}
+
+// KeysToSet builds a lookup set for WebSocket auth.
+func KeysToSet(keys []string) map[string]struct{} {
+	if len(keys) == 0 {
+		return nil
+	}
+	m := make(map[string]struct{}, len(keys))
+	for _, k := range keys {
+		k = strings.TrimSpace(k)
+		if k != "" {
+			m[k] = struct{}{}
+		}
+	}
+	return m
 }
 
 // SplitKeys parses a comma-separated key list.

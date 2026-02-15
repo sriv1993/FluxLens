@@ -1,4 +1,4 @@
-# Operator Guide — Getting Started with FluxLens
+﻿# Operator Guide ΓÇö Getting Started with FluxLens
 
 This guide is for operators evaluating or deploying FluxLens to a real
 operational environment.
@@ -30,12 +30,12 @@ The choice is configurable; all providers implement the same
 
 | Strategy | When to use | Role example |
 |---|---|---|
-| 1 — Latest | Pure freshness; small focused operator views | Safety officer (filtered to severity ≥ error) |
-| 2 — Latest per source | Pure diversity; per-source health views | Multi-line manager |
-| 3 — Hybrid | Mixed coverage of all sources + global freshness | Default for operator dashboards |
-| 4 — Guaranteed min diversity | Default for analyst views | Quality engineer |
-| 5 — Min diversity random eviction | Comparison baseline; analytical workloads | Algorithm A/B testing |
-| 6 — Preferred sources | When specific sources must always appear | Supply-chain analyst (critical suppliers) |
+| 1 ΓÇö Latest | Pure freshness; small focused operator views | Safety officer (filtered to severity ΓëÑ error) |
+| 2 ΓÇö Latest per source | Pure diversity; per-source health views | Multi-line manager |
+| 3 ΓÇö Hybrid | Mixed coverage of all sources + global freshness | Default for operator dashboards |
+| 4 ΓÇö Guaranteed min diversity | Default for analyst views | Quality engineer |
+| 5 ΓÇö Min diversity random eviction | Comparison baseline; analytical workloads | Algorithm A/B testing |
+| 6 ΓÇö Preferred sources | When specific sources must always appear | Supply-chain analyst (critical suppliers) |
 
 ## Author a domain pack
 
@@ -79,7 +79,7 @@ See `pkg/domainpack/examples/` for three reference packs:
   from the writer.
 - Always mirror the audit log to WORM storage for high-stakes
   deployments.
-- Never set the LLM provider to "autonomous" — there is no such mode.
+- Never set the LLM provider to "autonomous" ΓÇö there is no such mode.
   Operator override is enforced in code (ADR 0006).
 - Always run shadow-mode validation when switching LLM providers or
   models.

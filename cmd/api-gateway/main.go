@@ -1,8 +1,6 @@
-// Command api-gateway exposes the FluxLens REST API. Phase 1 implements
-// the health endpoint, a digest request endpoint that proxies into the
-// curation library, and an audit-snapshot endpoint backed by the
-// in-memory chain. Authentication, RBAC, and WebSocket fan-out are
-// added in Phase 2 (milestones M2.8 and onward).
+// Command api-gateway exposes the FluxLens REST and WebSocket API,
+// optional Kafka bridge (decisions + curated + raw topics), webhook
+// ingest, API-key auth, and role-based access control.
 //
 // The gateway also wires one production-grade vertical slice for demos:
 // ingest → digest → mock LLM suggestion → human accept/override → audit export.
@@ -30,7 +28,9 @@ import (
 	"github.com/sriharshav1/fluxlens/internal/httpauth"
 	"github.com/sriharshav1/fluxlens/internal/llm"
 	"github.com/sriharshav1/fluxlens/internal/observability"
+	"github.com/sriharshav1/fluxlens/internal/kafkabridge"
 	"github.com/sriharshav1/fluxlens/internal/orchestrator"
+	"github.com/sriharshav1/fluxlens/internal/stream"
 	"github.com/sriharshav1/fluxlens/pkg/domainpack"
 )
 
@@ -48,6 +48,7 @@ type server struct {
 	auditOK          bool
 	orch             *orchestrator.Orchestrator
 	wedgeInstruction string
+	hub              *stream.Hub
 }
 
 func newServer(maxRecent int, chain auditlog.Store, wedgeInstruction string) *server {
@@ -81,17 +82,33 @@ func newServer(maxRecent int, chain auditlog.Store, wedgeInstruction string) *se
 	}
 }
 
-func (s *server) routes(openAPIPath string) http.Handler {
+func (s *server) routes(openAPIPath string, hub *stream.Hub, live *liveState, allowedKeys map[string]struct{}) http.Handler {
 	mux := http.NewServeMux()
+	operator := httpauth.RequireRoles(httpauth.RoleOperator, httpauth.RoleReviewer, httpauth.RoleAdmin)
+	auditor := httpauth.RequireRoles(httpauth.RoleAuditor, httpauth.RoleAdmin)
+
 	mux.HandleFunc("/api/v1/health", s.handleHealth)
 	mux.HandleFunc("/api/v1/events", s.handleEvents)
 	mux.HandleFunc("/api/v1/digest", s.handleDigest)
 	mux.HandleFunc("/api/v1/audit", s.handleAudit)
 	mux.HandleFunc("/api/v1/alerts", s.handleAlerts)
-	mux.HandleFunc("/api/v1/operator/suggest", s.handleOperatorSuggest)
-	mux.HandleFunc("/api/v1/operator/suggest-precedents", s.handleOperatorSuggestPrecedents)
-	mux.HandleFunc("/api/v1/operator/resolve", s.handleOperatorResolve)
-	mux.HandleFunc("/api/v1/operator/export", s.handleOperatorExport)
+	mux.Handle("/api/v1/operator/suggest", operator(http.HandlerFunc(s.handleOperatorSuggest)))
+	mux.Handle("/api/v1/operator/suggest-precedents", operator(http.HandlerFunc(s.handleOperatorSuggestPrecedents)))
+	mux.Handle("/api/v1/operator/resolve", operator(http.HandlerFunc(s.handleOperatorResolve)))
+	mux.Handle("/api/v1/operator/export", auditor(http.HandlerFunc(s.handleOperatorExport)))
+	mux.HandleFunc("/api/v1/stream", func(w http.ResponseWriter, r *http.Request) {
+		s.handleStream(w, r, hub, allowedKeys)
+	})
+	mux.HandleFunc("/api/v1/webhook", func(w http.ResponseWriter, r *http.Request) {
+		s.handleWebhook(w, r, hub)
+	})
+	mux.HandleFunc("/api/v1/decisions", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		s.handleDecisions(w, r, live)
+	})
 	mux.Handle("/metrics", observability.Handler())
 	mux.HandleFunc("/api/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, openAPIPath)
@@ -145,6 +162,12 @@ func main() {
 	apiKeysFlag := flag.String("api-keys", "", "Comma-separated API keys (or set FLUXLENS_API_KEYS)")
 	openAPIPath := flag.String("openapi", "api/openapi.yaml", "Path to OpenAPI spec file")
 	domainPackPath := flag.String("domain-pack", "", "YAML domain pack for default LLM instruction")
+	apiKeyRolesFlag := flag.String("api-key-roles", "", "key:role+role,... (or FLUXLENS_API_KEY_ROLES)")
+	kafkaAddr := flag.String("kafka", os.Getenv("FLUXLENS_KAFKA"), "Kafka bootstrap; enables decisions/curated/raw bridge when set")
+	kafkaGroup := flag.String("kafka-group", "fluxlens-gateway", "Consumer group for gateway Kafka bridge")
+	decisionsTopic := flag.String("kafka-decisions-topic", "fluxlens.decisions", "Kafka topic for orchestrator decisions")
+	curatedTopic := flag.String("kafka-curated-topic", "fluxlens.events.curated", "Kafka topic for curated digests")
+	rawTopic := flag.String("kafka-raw-topic", "fluxlens.events.raw", "Kafka topic for raw canonical events")
 	flag.Parse()
 
 	openCtx, openCancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -165,7 +188,10 @@ func main() {
 		log.Printf("loaded domain pack %q", pack.Name)
 	}
 
+	hub := stream.NewHub()
 	srv := newServer(*maxRecent, chain, wedgeInstr)
+	srv.hub = hub
+	live := newLiveState(500)
 
 	// Seed the audit chain with a startup record so operators can see the chain working.
 	_, _ = srv.chain.Append("system", map[string]string{
@@ -178,9 +204,33 @@ func main() {
 	if len(apiKeys) == 0 {
 		apiKeys = httpauth.KeysFromEnv()
 	}
-	handler := observability.Instrument(httpauth.APIKeyMiddleware(apiKeys, srv.routes(*openAPIPath)))
+	keyRoles := httpauth.ParseKeyRoles(httpauth.SplitKeys(*apiKeyRolesFlag))
+	if len(keyRoles) == 0 {
+		keyRoles = httpauth.ParseKeyRoles(httpauth.RolesFromEnv())
+	}
+	for _, k := range apiKeys {
+		if _, ok := keyRoles[k]; !ok {
+			keyRoles[k] = []string{httpauth.RoleOperator}
+		}
+	}
+	if len(apiKeys) == 0 && len(keyRoles) > 0 {
+		for k := range keyRoles {
+			apiKeys = append(apiKeys, k)
+		}
+	}
+	allowedKeys := httpauth.KeysToSet(apiKeys)
+	handler := observability.Instrument(
+		httpauth.APIKeyMiddleware(apiKeys,
+			httpauth.RBACMiddleware(keyRoles,
+				srv.routes(*openAPIPath, hub, live, allowedKeys),
+			),
+		),
+	)
 	if len(apiKeys) > 0 {
 		log.Printf("API key authentication enabled (%d keys)", len(apiKeys))
+	}
+	if len(keyRoles) > 0 {
+		log.Printf("RBAC enabled for %d principals", len(keyRoles))
 	}
 
 	h := &http.Server{
@@ -192,6 +242,17 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	if strings.TrimSpace(*kafkaAddr) != "" {
+		srv.startKafkaBridge(ctx, kafkabridge.Config{
+			Brokers:        *kafkaAddr,
+			GroupID:        *kafkaGroup,
+			DecisionsTopic: *decisionsTopic,
+			CuratedTopic:   *curatedTopic,
+			RawTopic:       *rawTopic,
+		}, hub, live)
+		log.Printf("Kafka bridge enabled (brokers=%s decisions=%s)", *kafkaAddr, *decisionsTopic)
+	}
+
 	go func() {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
@@ -248,14 +309,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid event: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	s.addRecent(e)
-	_, _ = s.chain.Append("ingest", map[string]string{
-		"event_id":  e.EventID,
-		"source_id": e.SourceID,
-	})
-	for _, a := range alerts.FromIngestEvent(e) {
-		s.alerts.Add(a)
-	}
+	s.ingestEvent(e, s.hub)
 	ok, verr := s.chain.Verify()
 	s.observeAudit(ok, verr)
 	writeJSON(w, http.StatusAccepted, map[string]string{"event_id": e.EventID})
@@ -298,6 +352,9 @@ func (s *server) handleDigest(w http.ResponseWriter, r *http.Request) {
 	}
 	ok, verr := s.chain.Verify()
 	s.observeAudit(ok, verr)
+	if s.hub != nil {
+		s.hub.BroadcastJSON(stream.TypeDigest, res)
+	}
 	writeJSON(w, http.StatusOK, res)
 }
 

@@ -10,11 +10,17 @@ import (
 
 	"github.com/sriharshav1/fluxlens/internal/auditlog"
 	"github.com/sriharshav1/fluxlens/internal/canonical"
+	"github.com/sriharshav1/fluxlens/internal/httpauth"
+	"github.com/sriharshav1/fluxlens/internal/stream"
 )
+
+func testRoutes(s *server) http.Handler {
+	return httpauth.RBACMiddleware(nil, s.routes("api/openapi.yaml", stream.NewHub(), newLiveState(100), nil))
+}
 
 func TestVerticalSlice_IngestSuggestResolveExport(t *testing.T) {
 	s := newServer(500, auditlog.NewChain(), defaultWedgeInstruction)
-	ts := httptest.NewServer(withLogging(s.routes("api/openapi.yaml")))
+	ts := httptest.NewServer(withLogging(testRoutes(s)))
 	defer ts.Close()
 	c := ts.Client()
 
@@ -101,7 +107,7 @@ func TestVerticalSlice_IngestSuggestResolveExport(t *testing.T) {
 
 func TestOperatorSuggestPrecedents(t *testing.T) {
 	s := newServer(500, auditlog.NewChain(), defaultWedgeInstruction)
-	ts := httptest.NewServer(withLogging(s.routes("api/openapi.yaml")))
+	ts := httptest.NewServer(withLogging(testRoutes(s)))
 	defer ts.Close()
 	c := ts.Client()
 

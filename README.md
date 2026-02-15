@@ -1,180 +1,173 @@
 # FluxLens
 
-> **Open-source platform for AI-augmented industrial event curation and
-> decision support.**
->
-> Hyper-scale ingestion. Freshness/diversity/redundancy-aware curation.
-> AI decision support with hard human-override guarantees.
-> Tamper-evident audit logging. For clean-energy manufacturing,
-> national-scale retail and supply-chain operations, and federally
-> funded research environments.
+**Open-source platform for AI-augmented industrial event curation and decision support.**
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
-[![Status: early development](https://img.shields.io/badge/status-early%20active%20development-orange.svg)](#status)
+[![Status: Phase 1 MVP](https://img.shields.io/badge/status-Phase%201%20MVP-orange.svg)](#what-shipped)
 [![Go 1.22+](https://img.shields.io/badge/go-1.22+-00ADD8.svg)](https://golang.org)
-[![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant%202.1-green.svg)](./CODE_OF_CONDUCT.md)
+
+> **TL;DR.** FluxLens combines change-data-capture ingestion, freshness/diversity/redundancy-aware event curation, AI decision support with **hard human-override guarantees**, and a **tamper-evident audit log**. Built for operational environments where event volume overwhelms operators (manufacturing lines, large retail networks, research IT). Apache 2.0.  
+> https://github.com/sriharshav1/fluxlens
 
 ---
 
-## What it does
+## The problem
+
+Modern industrial operations run on **events**: line faults, inventory deltas, compliance signals, security anomalies, supplier delays. At gigafactory, retail, and research scale, those events arrive **faster than any team can read them**.
+
+That gap is not a tooling inconvenience. It is where **outages start**, **quality escapes**, and **incidents turn into crises** because the right signal was buried under noise.
+
+Every serious operator hits the same wall:
+
+- **Volume beats attention.** Dashboards and paging multiply; operators still miss what matters because the firehose never stops.
+- **Loud sources win.** One chatty system dominates the feed while a quiet line, cold chain, or security edge case goes unseen until it is expensive.
+- **Raw AI is not deployable.** A model that can summarize an alert cannot, by itself, satisfy regulated environments. You need suggestions operators can **reject**, with proof of who decided what.
+- **After the fact, you need evidence.** Regulators, insurers, and your own postmortems ask the same question: what did the system recommend, what did a human do, and can you prove the record was not altered?
+
+Generic observability stacks **store** events. Generic LLM wrappers **chat about** them. Neither was built for the full loop industrial teams need: **ingest at source fidelity, curate for operator attention, assist under guardrails, audit every step**.
+
+The complete pattern (CDC-scale ingestion, diversity-aware curation, guarded decision support, hash-chained audit) has never been available as a **coherent, open platform** you can adopt, inspect, and extend.
+
+**FluxLens closes that gap.** It is the reference implementation of that loop, designed so operational software keeps pace with the systems it is meant to protect.
+
+## What FluxLens is
+
+A composable stack with four layers:
+
+### 1. Ingestion
+
+Read changes from source systems with minimal impact on the sources:
+
+- **MySQL** binlog CDC (`fluxlens-ingest-mysql`)
+- **Postgres** logical replication (`fluxlens-ingest-postgres`)
+- **Kafka** topics (curator/orchestrator pipeline)
+- **HTTP webhooks** (`POST /api/v1/webhook` or `fluxlens-webhook-gateway`)
+- **Synthetic** traffic for demos (`fluxlens-synth-source`)
+
+Everything normalizes to one **canonical event** schema before curation.
+
+### 2. Curation
+
+Six configurable algorithms balance three tradeoffs operators actually care about:
+
+- **Freshness** (see the latest)
+- **Diversity** (no single source monopolizes the digest)
+- **Redundancy suppression** (do not show the same event ten times)
+
+The dashboard exposes strategy, diversity %, and digest size (`k`). The same parameters drive `fluxlens-curator` in the Kafka pipeline.
+
+### 3. AI decision support (with hard guarantees)
+
+The orchestrator calls an LLM through a pluggable provider (OpenAI-compatible, Ollama, vLLM, or mock for CI), validates input and output with **guardrails**, and returns a **suggestion to the operator**. It never takes a consequential action itself. Accept, override, and annotate are recorded in the audit chain. **Override is enforced in code**, not in policy.
+
+On critical/error events the dashboard offers **Suggested actions**: similar past resolutions from the audit chain inform the model; the operator still chooses the outcome.
+
+### 4. Tamper-evident audit
+
+Every ingest, digest selection, model output, and operator action is **hash-chained**. Tampering breaks the chain detectably. Optional **Postgres** persistence (`FLUXLENS_POSTGRES_DSN`) plus `fluxlens-chain-verifier` support durable deployments.
 
 ```mermaid
 flowchart LR
-    SRC[Source systems<br/>MySQL · Postgres · Kafka · webhooks]
-    SRC --> ING[Ingestion<br/>CDC connectors]
-    ING --> BUS[(Kafka)]
-    BUS --> CUR[Curation<br/>6 algorithms]
-    CUR --> AI[AI orchestrator<br/>guardrails + override]
-    AI --> OP[Operator surface<br/>dashboard · API · paging]
-    AI --> AUD[(Hash-chained audit log)]
-    CUR --> AUD
+    SRC[MySQL · Postgres · Kafka · webhooks]
+    SRC --> ING[Ingest]
+    ING --> CUR[Curate · 6 strategies]
+    CUR --> AI[AI orchestrator]
+    AI --> OP[Dashboard · API]
+    CUR --> AUD[Audit chain]
+    AI --> AUD
 ```
 
-- **Ingest** change events from real source systems with zero impact
-  on the source. FluxLens adopts the CDC + Kafka + durable-store
-  patterns common at very large-scale industrial operators.
-- **Curate** the resulting stream so operators see what matters.
-  Six tunable strategies that prioritize freshness, source diversity,
-  and redundancy suppression.
-- **Augment** operator decisions with LLM-generated context,
-  classification, and suggested action — under hard human-override
-  and audit guarantees enforced *in code*, not in policy.
-- **Audit** every decision and operator action in a tamper-evident,
-  hash-chained, append-only log. Optional WORM mirroring for
-  high-stakes deployments.
+## What shipped
 
-## Quickstart (5 minutes)
+A working **Phase 1 MVP** you can run on a laptop:
+
+- **Operator dashboard** (React): live digest, scores, audit viewer, alerts, suggested actions, pipeline decisions when Kafka is connected
+- **API gateway**: REST, WebSocket (`/api/v1/stream`), webhooks, OpenAPI, Prometheus metrics, API-key RBAC
+- **Kafka pipeline**: synth → curator → orchestrator → decisions topic; gateway can bridge decisions into the UI
+- **Connectors**: MySQL binlog CDC, Postgres logical replication, webhook gateway
+- **Tests** for all six curation strategies, audit chain verification, orchestrator guardrails
+- **Domain packs** (clean energy, retail, federal research), ADRs, compliance mapping docs, Helm chart skeleton, `docker-compose` dev stack
+
+## What is not claimed yet
+
+- Production-ready for multi-AZ, regulated production without your own hardening pass
+- OAuth2/OIDC (API-key roles ship today; full OIDC is Phase 2)
+- Hosted SaaS or closed-source extensions (the repo stays Apache 2.0)
+- Customer case studies (none yet; feedback welcome)
+
+Details and dates: [`ROADMAP.md`](./ROADMAP.md).
+
+## Try it
+
+**You need:** Go 1.22+, Node 20+. Docker only for the full Kafka stack.
+
+### A. See the UI in ~2 minutes (no Docker)
 
 ```bash
 git clone https://github.com/sriharshav1/fluxlens.git
 cd fluxlens
-make tidy && make test     # build and run all tests
-make dev                   # start kafka + postgres + redis + mock LLM + prometheus + grafana
-make build                 # compile FluxLens binaries
-
-# In three terminals:
-./bin/fluxlens-curator --kafka localhost:9092 --strategy 4 --diversity 80
-./bin/fluxlens-orchestrator --kafka localhost:9092 --llm-base http://localhost:8080
-./bin/fluxlens-api-gateway --addr :8090
-
-# In a fourth (add --gateway so the dashboard receives the same stream):
-./bin/fluxlens-synth-source --kafka localhost:9092 --rate 100 --source-count 20 \
-  --gateway http://localhost:8090
-
-# Open the dashboard:
-cd dashboard && npm install && npm run dev
-# → http://localhost:5173
-```
-
-### Demo UI without Docker (screen recordings)
-
-Go + Node.js only — API gateway + synthetic events — no Kafka stack:
-
-```bash
 make build
 
 ./bin/fluxlens-api-gateway --addr :8090 &
 ./bin/fluxlens-synth-source --no-kafka --gateway http://localhost:8090 --rate 25 --source-count 12 &
 cd dashboard && npm install && npm run dev
-# → http://localhost:5173
 ```
 
-Full quickstart (Kafka + curator + orchestrator): [`docs/tutorials/01-quickstart.md`](./docs/tutorials/01-quickstart.md).
+Open **http://localhost:5173**. You should see events flowing, freshness/diversity/redundancy scores, audit chain status, and suggested actions on critical rows.
 
-**Durable audit (local Postgres):** after `make dev`, run the gateway with  
-`FLUXLENS_POSTGRES_DSN=postgres://fluxlens:fluxlens-dev@localhost:5432/fluxlens?sslmode=disable`  
-and verify with `bin/fluxlens-chain-verifier`. See [`docs/PRODUCTION_CHECKLIST.md`](./docs/PRODUCTION_CHECKLIST.md).
+### B. Full pipeline (Kafka + curation + LLM + live decisions)
 
-**MySQL CDC:** grant `REPLICATION CLIENT` and `REPLICATION SLAVE`, set `binlog_format=ROW`, then:
+Terminal 1:
 
 ```bash
-./bin/fluxlens-ingest-mysql \
-  --dsn 'user:pass@tcp(localhost:3306)/mydb' \
-  --kafka localhost:9092 \
-  --tables 'mydb.orders,mydb.inventory'
+make dev    # Kafka, Postgres, mock LLM, Prometheus, Grafana
 ```
 
-## Why this matters
+Terminals 2–5:
 
-The U.S. is investing hundreds of billions of dollars in clean-energy
-manufacturing capacity (Inflation Reduction Act §45X), advanced
-manufacturing R&D (CHIPS and Science Act), and AI deployment that
-protects the American workforce (Executive Order 14110, NIST AI Risk
-Management Framework). Capital creates capacity; **operational
-software determines whether capacity becomes output**.
+```bash
+make build
 
-The operational patterns that work — hyper-scale CDC, intelligent
-event curation, AI with verifiable human override, federal-grade
-audit — exist privately at large operators. FluxLens makes them
-available as open source.
+./bin/fluxlens-api-gateway --addr :8090 -kafka localhost:9092
+./bin/fluxlens-curator --kafka localhost:9092 --strategy 4 --diversity 80 --k 20
+./bin/fluxlens-orchestrator --kafka localhost:9092 --llm-base http://localhost:8080
+./bin/fluxlens-synth-source --kafka localhost:9092 --rate 100 --source-count 20 \
+  --gateway http://localhost:8090
+```
 
-### National interest in brief
+Terminal 6: `cd dashboard && npm run dev`
 
-FluxLens is aimed at domains U.S. policy treats as strategically
-important:
+The **Pipeline decisions** panel and WebSocket feed light up when orchestrator output reaches the gateway.
 
-- **Clean-energy / advanced manufacturing (IRA §45X, CHIPS-era
-  toolkit)** — high-velocity telemetry, yield and quality signals, and
-  auditable decision support as domestic capacity scales.
-- **Critical-infrastructure operations (notably commercial facilities
-  & food/ag under PPD‑21)** — balancing noisy streams with localized
-  response, continuity signals, and defensible audit trails during
-  stress.
-- **Federally aligned research & regulated environments** — human
-  override, hash-chained records, and air‑gap-friendly deployment
-  postures mapped toward NIST AI RMF / SP 800‑53–style disciplines.
+`make demo` only starts Docker and synthetic Kafka load; you still run gateway/curator/orchestrator for the full UI path.
 
-- [`docs/compliance/`](./docs/compliance/) — NIST AI RMF, NIST SP
-  800-53 control mappings, FedRAMP readiness posture
-- [`docs/domain-packs/`](./docs/domain-packs/) — reference packs for
-  clean-energy battery manufacturing, retail supply-chain resilience,
-  and federal research coordination
+### C. Smoke-test the API
 
-## Architecture
+```bash
+curl -s localhost:8090/api/v1/health | jq
+curl -s "localhost:8090/api/v1/digest?strategy=4&diversity=80&k=10" | jq
+curl -s localhost:8090/api/v1/audit | jq '.verified, (.records | length)'
+```
 
-- [`PRD.md`](./PRD.md) — full product requirements with diagrams
-- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — system architecture and
-  10 mermaid diagrams
-- [`ROADMAP.md`](./ROADMAP.md) — three-phase delivery plan
-- [`docs/adr/`](./docs/adr/) — ten Architecture Decision Records
+## Documentation
 
-## Status
-
-**Phase 1 MVP — early active development.**
-
-- ✅ Canonical event schema
-- ✅ All six curation algorithms with unit + end-to-end tests
-- ✅ Hash-chained audit log with tamper-detection tests
-- ✅ AI orchestrator with guardrails and provider abstraction
-- ✅ Mock + OpenAI-compatible LLM providers
-- ✅ Synthetic event generator
-- ✅ REST API gateway
-- ✅ React + TypeScript operator dashboard
-- ✅ docker-compose stack for local dev
-- ✅ Helm chart skeleton for Kubernetes deployment
-- ✅ Full documentation and compliance mapping
-- ✅ MySQL CDC connector (binlog replication via go-mysql; `-tables`, `-binlog-file`)
-- ⏳ Postgres CDC connector (Phase 2 M2.1)
-- ⏳ Production-ready Postgres-backed audit chain (Phase 2)
-- ⏳ Multi-AZ deployment with chaos testing (Phase 2 M2.6)
-- ⏳ OAuth2/OIDC + RBAC (Phase 2 M2.8)
-
-This is real software. It is not yet production-ready software. See
-[`ROADMAP.md`](./ROADMAP.md) for the plan to v1.0.0.
+| Doc | For |
+|-----|-----|
+| [`PRD.md`](./PRD.md) | Requirements, operator flows, API contract |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Services, diagrams, wedge vs Kafka paths |
+| [`ROADMAP.md`](./ROADMAP.md) | Phase 2/3 milestones |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Dev setup and PRs |
+| [`docs/adr/`](./docs/adr/) | Design decisions |
 
 ## Get involved
 
-| | |
-|---|---|
-| 🪧 **Use it** | `make demo` and tell us what surprised you |
-| 🐛 **Report issues** | https://github.com/sriharshav1/fluxlens/issues |
-| ✍️ **Contribute** | See [`CONTRIBUTING.md`](./CONTRIBUTING.md). PRs welcome on docs, code, tests, domain packs |
-| 🔒 **Security** | See [`SECURITY.md`](./SECURITY.md) |
-| 💬 **Talk** | Open a [GitHub discussion](https://github.com/sriharshav1/fluxlens/discussions) |
+- **Try the demo** and [open an issue](https://github.com/sriharshav1/fluxlens/issues) with what confused you or what you need.
+- **Contribute** connectors, domain packs, tests, or docs.
+- **Discuss** on [GitHub Discussions](https://github.com/sriharshav1/fluxlens/discussions).
 
 ## License
 
-Apache License 2.0 — see [`LICENSE`](./LICENSE).
+Apache License 2.0. See [`LICENSE`](./LICENSE).
 
 ## Citation
 

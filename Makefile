@@ -64,6 +64,8 @@ build:
 	$(GO) build -o bin/fluxlens-ingest-mysql  ./cmd/ingest-mysql
 	$(GO) build -o bin/fluxlens-synth-source  ./cmd/synth-source
 	$(GO) build -o bin/fluxlens-chain-verifier ./cmd/chain-verifier
+	$(GO) build -o bin/fluxlens-ingest-postgres ./cmd/ingest-postgres
+	$(GO) build -o bin/fluxlens-webhook-gateway ./cmd/webhook-gateway
 
 .PHONY: dashboard-install dashboard-dev dashboard-build
 dashboard-install:

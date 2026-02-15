@@ -296,11 +296,17 @@ meaningful impact on source performance.
 **Components.**
 - **MySQL CDC connector** — based on Maxwell/Debezium-style binlog
   following with JSON change events emitted to Kafka.
+  *Reference implementation:* `cmd/ingest-mysql`, `internal/cdc/mysql`.
 - **Postgres CDC connector** — uses logical replication slots and
   `pgoutput` plugin to capture row-level changes.
+  *Reference implementation:* `cmd/ingest-postgres`, `internal/cdc/postgres`.
 - **Kafka consumer** — for environments where events are already on
   Kafka; FluxLens re-curates and re-publishes.
+  *Reference implementation:* `cmd/curator`, `cmd/orchestrator`; gateway
+  Kafka bridge when `-kafka` is set (see §6.5).
 - **Webhook receiver** — for generic HTTP event sources.
+  *Reference implementation:* `POST /api/v1/webhook` on the gateway;
+  `cmd/webhook-gateway` for edge HTTP → Kafka (+ optional gateway mirror).
 - **Normalizer** — translates source-specific event shapes into a
   canonical FluxLens event schema (see §10).
 
@@ -430,8 +436,27 @@ Concrete REST handlers today:
 - `POST /api/v1/operator/suggest-precedents` — JSON body `{ event_id, instruction?, max_precedents? }`; retrieves similar past `operator_action` + `decision` rows from the audit chain, calls the LLM with precedent context, returns `steps[]` (optional `cited_precedent_hash`) plus a `decision` audited as **`decision_with_precedents`**
 - `POST /api/v1/operator/resolve` — JSON body `{ event_id, decision_audit_hash, operator_id, action, annotation }`; values of `action` are `accept`, `override`, or `annotate`; appends **`operator_action`**
 - `GET /api/v1/operator/export` — JSON bundle for offline evidence review (records + verification metadata)
+- `WS /api/v1/stream` — WebSocket push of `event`, `digest`, and `decision` envelopes (see `internal/stream`)
+- `POST /api/v1/webhook` — ingest webhook-shaped events into the gateway buffer (canonical `source_type: webhook`)
+- `GET /api/v1/decisions` — recent orchestrator decisions buffered from Kafka when the gateway bridge is enabled
+- `GET /api/openapi.yaml` — OpenAPI 3.1 spec; `GET /metrics` — Prometheus exposition
 
-**Non-goals for this slice:** OAuth/RBAC enforcement on these routes (Phase 2), durable alert storage, external webhook dispatch, running orchestrator as a separate replica set (still supported later via existing `cmd/orchestrator`).
+**Kafka bridge (optional, `cmd/api-gateway -kafka`):** consumes
+`fluxlens.decisions`, `fluxlens.events.curated`, and `fluxlens.events.raw`
+(default topic names) to feed the dashboard live feed and in-memory buffers
+without replacing the wedge REST handlers.
+
+**Authorization (Phase 1 reference):** API-key authentication
+(`FLUXLENS_API_KEYS`) plus role bindings (`FLUXLENS_API_KEY_ROLES`, format
+`key:operator+admin`). Operator routes require `operator`, `reviewer`, or
+`admin`; audit export requires `auditor` or `admin`. Full OAuth2/OIDC remains
+Phase 2 (ROADMAP M2.8).
+
+**Still Phase 2 / not in this slice:** OAuth2/OIDC browser login, durable
+alert storage, external paging webhooks, `POST /api/v1/config/sources`,
+path-style digest URLs from the aspirational list above, unified audit chain
+across standalone `cmd/orchestrator` and gateway (orchestrator still uses its
+own in-process chain when run separately).
 
 ### 6.6 Operator dashboard
 
@@ -439,7 +464,10 @@ Concrete REST handlers today:
 event stream.
 
 **Capabilities (Phase 1).**
-- Live curated event feed with strategy selector
+- Live curated event feed with strategy selector (REST polling; **WebSocket**
+  `/api/v1/stream` when connected, including digest updates from the Kafka bridge)
+- **Pipeline decisions panel:** shows orchestrator output from `fluxlens.decisions`
+  when the gateway runs with `-kafka` and `cmd/orchestrator` is in the loop
 - **Precedent-informed resolution:** on **critical** and **error** feed rows, **Suggested actions** opens a panel that calls `POST /operator/suggest-precedents`, shows ranked steps (with optional precedent citations), then links to accept / override / annotate (human-only; no autonomous moves)
 - **Operator wedge strip:** choose digest row → mock AI suggestion → submit audited accept / override / annotate → download audit bundle
 - Buffered alerts panel with severity cues (demo persistence only)

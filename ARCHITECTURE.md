@@ -102,6 +102,11 @@ flowchart LR
     SR4 --> CO1
 ```
 
+**Phase 1 note:** `SR2` (WebSocket fan-out) and the Kafka decisions bridge
+are implemented **inside** `cmd/api-gateway` (`internal/stream`,
+`internal/kafkabridge`). A separate `websocket-fanout` service remains the
+target for high-scale Phase 2 deployments.
+
 ### 3.1 Phase 1 reference topology (`cmd/api-gateway`)
 
 Production retains the decomposition above. For **depth-first demos**
@@ -113,6 +118,8 @@ verification into **one OS process** sharing a single `auditlog.Chain`.
 flowchart LR
   subgraph GW[api-gateway single process]
     REST[HTTP mux]
+    WS[WebSocket hub]
+    KBR[Kafka bridge optional]
     BUF[recent events buffer]
     CHAIN[auditlog.Chain]
     CUR[curation.Select]
@@ -121,6 +128,12 @@ flowchart LR
     ALRT[alerts.Store]
   end
   UI[dashboard static UI]
+  KAFKA[(Kafka topics)]
+
+  KBR -.->|decisions curated raw| KAFKA
+  KBR --> BUF
+  KBR --> WS
+  REST --> WS
 
   REST --> BUF
   REST --> CUR
@@ -138,8 +151,10 @@ flowchart LR
 
 This topology trades HA isolation for **legibility**: reviewers can
 execute ingest → digest → AI suggestion → human resolution → JSON export
-without Kafka or Postgres. Horizontal deployments MUST split writers per
-ADR backlog once throughput exceeds single-node limits.
+without Kafka or Postgres. With `-kafka`, the same process also consumes
+orchestrator decisions and curated digests for the live dashboard. Horizontal
+deployments MUST split writers per ADR backlog once throughput exceeds
+single-node limits.
 
 ## 4. Data architecture
 
@@ -242,6 +257,17 @@ flowchart TB
 | Audit log write failure | Synchronous write check | Block decision pathway; alert | 0 | <5s |
 
 ## 6. Security architecture
+
+### 6.0 Phase 1 reference auth (shipped)
+
+The reference gateway enforces **API keys** (`Authorization: Bearer` or
+`X-API-Key`) and optional **role bindings** (`FLUXLENS_API_KEY_ROLES`:
+`secret:operator+admin`). Roles: `operator`, `reviewer`, `admin`, `auditor`.
+WebSocket `/api/v1/stream` accepts the same keys when configured. When no
+keys are set, middleware runs in local-dev mode (all roles). This is not a
+substitute for enterprise OIDC; see target model below.
+
+### 6.1 Target production auth (Phase 2+)
 
 ```mermaid
 flowchart TB
@@ -411,6 +437,36 @@ flowchart TB
     H -->|RecordOperatorAction| OR
     OR -->|Append operator_action| CH
 ```
+
+### 9.3 Kafka-connected dashboard path
+
+When `api-gateway` runs with `-kafka` alongside `curator`, `orchestrator`,
+and a synthetic or CDC ingest path:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant ING as ingest / synth
+    participant K as Kafka
+    participant CUR as curator
+    participant OR as orchestrator
+    participant GW as api-gateway
+    participant WS as WebSocket hub
+    participant UI as Dashboard
+
+    ING->>K: fluxlens.events.raw
+    K->>CUR: consume raw
+    CUR->>K: fluxlens.events.curated
+    K->>OR: consume curated
+    OR->>K: fluxlens.decisions
+    K->>GW: bridge consumers
+    GW->>WS: digest / decision messages
+    WS-->>UI: live feed
+    UI->>GW: REST health / audit / operator resolve
+```
+
+The UI still uses REST for operator accept/override/annotate and audit
+export; WebSocket carries incremental digest and decision visibility.
 
 ## 10. Observability architecture
 

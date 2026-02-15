@@ -5,6 +5,8 @@ import EventFeed from "./components/EventFeed";
 import AuditPanel from "./components/AuditPanel";
 import AlertsPanel from "./components/AlertsPanel";
 import OperatorWedge from "./components/OperatorWedge";
+import DecisionsPanel from "./components/DecisionsPanel";
+import { useFluxStream } from "./useFluxStream";
 
 const STRATEGY_LABELS: Record<number, string> = {
   1: "Latest",
@@ -24,6 +26,7 @@ export default function App() {
   const [diversity, setDiversity] = useState(80);
   const [k, setK] = useState(20);
   const [err, setErr] = useState<string | null>(null);
+  const { liveDigest, decisions, connected } = useFluxStream(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -48,6 +51,8 @@ export default function App() {
     const id = setInterval(refresh, 5000);
     return () => clearInterval(id);
   }, [refresh]);
+
+  const displayDigest = liveDigest ?? digest;
 
   return (
     <div className="app">
@@ -82,27 +87,29 @@ export default function App() {
         <button onClick={() => void refresh()}>Refresh now</button>
       </section>
 
-      {digest && (
+      {displayDigest && (
         <section className="scores">
           <div>
             <span className="label">Freshness</span>
-            <span className="value">{digest.FreshnessScore.toFixed(3)}</span>
+            <span className="value">{displayDigest.FreshnessScore.toFixed(3)}</span>
           </div>
           <div>
             <span className="label">Diversity</span>
-            <span className="value">{digest.DiversityScore.toFixed(3)}</span>
+            <span className="value">{displayDigest.DiversityScore.toFixed(3)}</span>
           </div>
           <div>
             <span className="label">Redundancy</span>
-            <span className="value">{digest.RedundancyScore.toFixed(3)}</span>
+            <span className="value">{displayDigest.RedundancyScore.toFixed(3)}</span>
           </div>
         </section>
       )}
 
-      <OperatorWedge events={digest?.Selected ?? []} onRefresh={refresh} />
+      <DecisionsPanel decisions={decisions} connected={connected} />
+
+      <OperatorWedge events={displayDigest?.Selected ?? []} onRefresh={refresh} />
 
       <main className="main">
-        <EventFeed events={digest?.Selected ?? []} onRefresh={refresh} />
+        <EventFeed events={displayDigest?.Selected ?? []} onRefresh={refresh} />
         <AuditPanel audit={audit} />
         <AlertsPanel
           alerts={alertPack?.alerts ?? []}

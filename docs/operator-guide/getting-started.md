@@ -1,4 +1,4 @@
-﻿# Operator Guide ΓÇö Getting Started with FluxLens
+﻿# Operator Guide: Getting Started with FluxLens
 
 This guide is for operators evaluating or deploying FluxLens to a real
 operational environment.
@@ -9,9 +9,9 @@ operational environment.
 |---|---|---|
 | Local dev (docker-compose) | Evaluating FluxLens, building a domain pack | Not for production |
 | Single-region Kubernetes | Single-site operator, low-medium HA needs | Default Phase 1 production posture |
-| Multi-AZ Kubernetes | Production at scale | See `docs/deployment/kubernetes.md` |
+| Multi-AZ Kubernetes | Production at scale | See [`ROADMAP.md`](../../ROADMAP.md) Phase 2 |
 | Multi-region federated | Multi-site / multi-region operators | Phase 3 |
-| Air-gapped | Federally sensitive / regulated environments | Local LLM provider required; see `docs/deployment/air-gapped.md` |
+| Air-gapped | Federally sensitive / regulated environments | Local LLM provider (Ollama or vLLM) |
 
 ## Choose your LLM provider
 
@@ -30,12 +30,12 @@ The choice is configurable; all providers implement the same
 
 | Strategy | When to use | Role example |
 |---|---|---|
-| 1 ΓÇö Latest | Pure freshness; small focused operator views | Safety officer (filtered to severity ΓëÑ error) |
-| 2 ΓÇö Latest per source | Pure diversity; per-source health views | Multi-line manager |
-| 3 ΓÇö Hybrid | Mixed coverage of all sources + global freshness | Default for operator dashboards |
-| 4 ΓÇö Guaranteed min diversity | Default for analyst views | Quality engineer |
-| 5 ΓÇö Min diversity random eviction | Comparison baseline; analytical workloads | Algorithm A/B testing |
-| 6 ΓÇö Preferred sources | When specific sources must always appear | Supply-chain analyst (critical suppliers) |
+| 1. Latest | Pure freshness; small focused operator views | Safety officer (severity >= error) |
+| 2. Latest per source | Pure diversity; per-source health views | Multi-line manager |
+| 3. Hybrid | Mixed coverage of all sources + global freshness | Default for operator dashboards |
+| 4. Guaranteed min diversity | Default for analyst views | Quality engineer |
+| 5. Min diversity random eviction | Comparison baseline; analytical workloads | Algorithm A/B testing |
+| 6. Preferred sources | When specific sources must always appear | Supply-chain analyst (critical suppliers) |
 
 ## Author a domain pack
 
@@ -54,14 +54,13 @@ See `pkg/domainpack/examples/` for three reference packs:
 
 ## Configure ingestion sources
 
-1. **MySQL.** Use the binlog CDC connector; ensure the source DB has
-   `binlog_format=ROW` and the FluxLens user has `REPLICATION CLIENT`
-   and `REPLICATION SLAVE` privileges.
-2. **Postgres.** Use the logical-replication CDC connector; ensure
-   `wal_level=logical` and create a replication slot.
-3. **Kafka.** Use the Kafka bridge to re-curate events already on a
-   Kafka topic.
-4. **Webhook.** Use the webhook gateway for HTTP-pushable sources.
+1. **MySQL.** Use `fluxlens-ingest-mysql`; ensure `binlog_format=ROW` and
+   replication privileges on the source DB.
+2. **Postgres.** Use `fluxlens-ingest-postgres`; ensure `wal_level=logical`
+   and a replication slot/publication for your tables.
+3. **Kafka.** Run `fluxlens-curator` and `fluxlens-orchestrator` on your
+   topics; enable the gateway `-kafka` bridge for the dashboard.
+4. **Webhook.** `POST /api/v1/webhook` on the gateway or `fluxlens-webhook-gateway`.
 
 ## Operate
 
@@ -79,8 +78,7 @@ See `pkg/domainpack/examples/` for three reference packs:
   from the writer.
 - Always mirror the audit log to WORM storage for high-stakes
   deployments.
-- Never set the LLM provider to "autonomous" ΓÇö there is no such mode.
-  Operator override is enforced in code (ADR 0006).
+- There is no autonomous LLM mode. Operator override is enforced in code ([ADR 0006](../adr/0006-human-override-in-code.md)).
 - Always run shadow-mode validation when switching LLM providers or
   models.
 

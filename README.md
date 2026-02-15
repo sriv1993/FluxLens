@@ -7,7 +7,7 @@
 [![Go 1.22+](https://img.shields.io/badge/go-1.22+-00ADD8.svg)](https://golang.org)
 
 > **TL;DR.** FluxLens combines change-data-capture ingestion, freshness/diversity/redundancy-aware event curation, AI decision support with **hard human-override guarantees**, and a **tamper-evident audit log**. Built for operational environments where event volume overwhelms operators (manufacturing lines, large retail networks, research IT). Apache 2.0.  
-> https://github.com/sriharshav1/fluxlens
+> https://github.com/sriv1993/FluxLens
 
 ---
 
@@ -104,7 +104,7 @@ Details and dates: [`ROADMAP.md`](./ROADMAP.md).
 ### A. See the UI in ~2 minutes (no Docker)
 
 ```bash
-git clone https://github.com/sriharshav1/fluxlens.git
+git clone https://github.com/sriv1993/FluxLens.git
 cd fluxlens
 make build
 
@@ -161,9 +161,9 @@ curl -s localhost:8090/api/v1/audit | jq '.verified, (.records | length)'
 
 ## Get involved
 
-- **Try the demo** and [open an issue](https://github.com/sriharshav1/fluxlens/issues) with what confused you or what you need.
+- **Try the demo** and [open an issue](https://github.com/sriv1993/FluxLens/issues) with what confused you or what you need.
 - **Contribute** connectors, domain packs, tests, or docs.
-- **Discuss** on [GitHub Discussions](https://github.com/sriharshav1/fluxlens/discussions).
+- **Discuss** on [GitHub Discussions](https://github.com/sriv1993/FluxLens/discussions).
 
 ## License
 
@@ -178,6 +178,6 @@ Apache License 2.0. See [`LICENSE`](./LICENSE).
                   Industrial Event Curation and Decision Support},
   year         = {2025},
   howpublished = {GitHub repository},
-  url          = {https://github.com/sriharshav1/fluxlens}
+  url          = {https://github.com/sriv1993/FluxLens}
 }
 ```

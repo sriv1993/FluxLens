@@ -1,5 +1,7 @@
 # FluxLens — Product Requirements Document
 
+> **Author:** Sri Harsha Vanga
+
 ## 1. Executive Summary
 
 FluxLens is an open-source platform for AI-augmented industrial event

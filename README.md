@@ -180,7 +180,7 @@ Apache License 2.0 — see [`LICENSE`](./LICENSE).
 
 ```bibtex
 @misc{fluxlens2025,
-  author       = {{FluxLens contributors}},
+  author       = {Vanga, Sri Harsha},
   title        = {FluxLens: An Open-Source Platform for AI-Augmented
                   Industrial Event Curation and Decision Support},
   year         = {2025},

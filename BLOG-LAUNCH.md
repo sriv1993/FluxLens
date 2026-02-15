@@ -1,6 +1,6 @@
 # FluxLens: An Open-Source Platform for AI-Augmented Industrial Event Curation
 
-*Posted: [LAUNCH DATE].*
+*Posted: [LAUNCH DATE]. By Sri Harsha Vanga.*
 
 > **TL;DR.** FluxLens is a new open-source platform that combines
 > hyper-scale Change Data Capture ingestion, freshness/diversity/
@@ -119,3 +119,5 @@ covers ecosystem integrations — catalogs, Marketplace listings,
 SIEM integrations, plugin SDKs, formal community steering.
 
 Thanks for reading.
+
+— Sri Harsha Vanga

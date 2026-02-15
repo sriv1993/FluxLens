@@ -1,5 +1,6 @@
 # FluxLens — Architecture
 
+> **Author:** Sri Harsha Vanga  
 > **Companion to:** [PRD.md](./PRD.md)
 
 This document records the technical architecture and key design

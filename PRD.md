@@ -1,4 +1,4 @@
-# FluxLens — Product Requirements Document
+# FluxLens: Product Requirements Document
 
 > **Author:** Sri Harsha Vanga
 
@@ -6,9 +6,9 @@
 
 FluxLens is an open-source platform for AI-augmented industrial event
 curation and decision support. It addresses a recurring problem in
-U.S.-critical industrial operations — clean-energy manufacturing,
-national-scale retail and supply-chain operations, federally funded
-research environments — where operators are overwhelmed by
+U.S.-critical industrial operations, including clean-energy manufacturing,
+national-scale retail and supply-chain operations, and federally funded
+research environments, where operators are overwhelmed by
 high-velocity event streams and lack tooling that combines
 hyper-scale ingestion, intelligent curation, AI-augmented decision
 support, and federally compliant auditability.
@@ -24,7 +24,7 @@ FluxLens provides a single composable platform that:
    monopolization.
 3. Augments operator decision-making with LLM copilots constrained
    by hard human-override guarantees and per-decision audit trails.
-4. Produces a verifiable, immutable audit trail for every decision —
+4. Produces a verifiable, immutable audit trail for every decision,
    appropriate for sectors subject to federal compliance requirements.
 
 The project bundles these operational patterns into a single open-source reference implementation. It is targeted at U.S.
@@ -57,8 +57,8 @@ In each environment, operators face the same composite problem:
    different paths.
 4. **Unstructured AI deployment.** Where AI is used to triage events,
    it is often deployed without verifiable human-override guarantees
-   or per-decision audit trails — failure modes that
-   federally-significant operations cannot tolerate.
+   or per-decision audit trails, which are failure modes that
+   federally significant operations cannot tolerate.
 
 ### 2.2 Why existing tooling does not solve it
 
@@ -76,9 +76,9 @@ In each environment, operators face the same composite problem:
   reusable open-source artifacts.
 
 FluxLens is the first open-source platform to combine all four
-capabilities — hyper-scale CDC ingestion, freshness/diversity/
+capabilities, hyper-scale CDC ingestion, freshness/diversity/
 redundancy curation, AI-augmented decision support, and federal-
-grade auditability — into a single composable reference architecture.
+grade auditability, into a single composable reference architecture.
 
 ## 3. Target Users
 
@@ -294,20 +294,20 @@ flowchart LR
 meaningful impact on source performance.
 
 **Components.**
-- **MySQL CDC connector** — based on Maxwell/Debezium-style binlog
+- **MySQL CDC connector**: based on Maxwell/Debezium-style binlog
   following with JSON change events emitted to Kafka.
   *Reference implementation:* `cmd/ingest-mysql`, `internal/cdc/mysql`.
-- **Postgres CDC connector** — uses logical replication slots and
+- **Postgres CDC connector**: uses logical replication slots and
   `pgoutput` plugin to capture row-level changes.
   *Reference implementation:* `cmd/ingest-postgres`, `internal/cdc/postgres`.
-- **Kafka consumer** — for environments where events are already on
+- **Kafka consumer**: for environments where events are already on
   Kafka; FluxLens re-curates and re-publishes.
   *Reference implementation:* `cmd/curator`, `cmd/orchestrator`; gateway
   Kafka bridge when `-kafka` is set (see §6.5).
-- **Webhook receiver** — for generic HTTP event sources.
+- **Webhook receiver**: for generic HTTP event sources.
   *Reference implementation:* `POST /api/v1/webhook` on the gateway;
   `cmd/webhook-gateway` for edge HTTP → Kafka (+ optional gateway mirror).
-- **Normalizer** — translates source-specific event shapes into a
+- **Normalizer**: translates source-specific event shapes into a
   canonical FluxLens event schema (see §10).
 
 **Key reliability properties.**
@@ -332,17 +332,17 @@ source diversity, and redundancy suppression on industrial event streams.
 
 **Six configurable selection strategies:**
 
-1. **Latest events** — pure freshness. Returns the `k` most recent
+1. **Latest events**: pure freshness. Returns the `k` most recent
    events regardless of source.
-2. **Latest per source** — pure diversity. Returns the latest event
+2. **Latest per source**: pure diversity. Returns the latest event
    per source.
-3. **Hybrid latest + per-source** — combines freshness and diversity.
-4. **Guaranteed-minimum source diversity** — operator specifies a
+3. **Hybrid latest + per-source**: combines freshness and diversity.
+4. **Guaranteed-minimum source diversity**: operator specifies a
    minimum source-coverage percentage; algorithm guarantees it while
    maximizing freshness within the constraint.
-5. **Guaranteed minimum with randomized eviction** — variant of (4)
+5. **Guaranteed minimum with randomized eviction**: variant of (4)
    with randomized eviction policy.
-6. **Preferred-source weighting** — operator-specified preferred
+6. **Preferred-source weighting**: operator-specified preferred
    sources are guaranteed representation when present.
 
 **Redundancy suppression.** Hash-based fingerprint of the last `N`
@@ -356,7 +356,7 @@ on event categories, sources, severity levels.
 
 **Purpose.** Augment operator decision-making on each curated event
 with LLM-generated context, classification, suggested action, and
-risk assessment — under hard human-override and audit guarantees.
+risk assessment, under hard human-override and audit guarantees.
 
 **Architecture properties (non-negotiable).**
 - Every decision pathway has a verified human-override hook before
@@ -404,15 +404,15 @@ generated, and every operator action taken.
 operator actions to dashboards and integrations.
 
 **Endpoints (Phase 1).**
-- `GET  /api/v1/health` — health and component status
-- `GET  /api/v1/digest/:strategy/:diversity/:n` — request a curated
+- `GET  /api/v1/health`: health and component status
+- `GET  /api/v1/digest/:strategy/:diversity/:n`: request a curated
   digest using one of the six selection strategies
-- `WS   /api/v1/stream` — real-time push of curated events
-- `POST /api/v1/decisions/:id/override` — operator override
-- `GET  /api/v1/audit/:from/:to` — audit log export
-- `GET  /api/v1/config/sources` — list configured sources
-- `POST /api/v1/config/sources` — register a new source
-- `POST /api/v1/config/reload` — hot-reload configuration
+- `WS   /api/v1/stream`: real-time push of curated events
+- `POST /api/v1/decisions/:id/override`: operator override
+- `GET  /api/v1/audit/:from/:to`: audit log export
+- `GET  /api/v1/config/sources`: list configured sources
+- `POST /api/v1/config/sources`: register a new source
+- `POST /api/v1/config/reload`: hot-reload configuration
 
 **Implemented reference slice (`cmd/api-gateway`, Phase 1 demo).**
 The shipping gateway exposes an end-to-end **operator wedge** on a
@@ -427,19 +427,19 @@ in this build.
 
 Concrete REST handlers today:
 
-- `GET /api/v1/health` — liveness plus audit-chain verification summary and buffered alert count
-- `POST /api/v1/events` — accept one validated canonical event into the recent-events buffer with `ingest` audit append
-- `GET /api/v1/digest` — query parameters `strategy`, `diversity`, `k`; returns curated selection; appends **`digest_selection`** audit record (distinct from orchestrator AI records)
-- `GET /api/v1/audit` — snapshot hash chain with verifier status
-- `GET /api/v1/alerts` / `DELETE /api/v1/alerts` — list or clear buffered operator alerts
-- `POST /api/v1/operator/suggest` — JSON body `{ event_id, instruction? }`; runs `internal/orchestrator` on the shared chain using a bundled manufacturing-line supervisor prompt when `instruction` is omitted
-- `POST /api/v1/operator/suggest-precedents` — JSON body `{ event_id, instruction?, max_precedents? }`; retrieves similar past `operator_action` + `decision` rows from the audit chain, calls the LLM with precedent context, returns `steps[]` (optional `cited_precedent_hash`) plus a `decision` audited as **`decision_with_precedents`**
-- `POST /api/v1/operator/resolve` — JSON body `{ event_id, decision_audit_hash, operator_id, action, annotation }`; values of `action` are `accept`, `override`, or `annotate`; appends **`operator_action`**
-- `GET /api/v1/operator/export` — JSON bundle for offline evidence review (records + verification metadata)
-- `WS /api/v1/stream` — WebSocket push of `event`, `digest`, and `decision` envelopes (see `internal/stream`)
-- `POST /api/v1/webhook` — ingest webhook-shaped events into the gateway buffer (canonical `source_type: webhook`)
-- `GET /api/v1/decisions` — recent orchestrator decisions buffered from Kafka when the gateway bridge is enabled
-- `GET /api/openapi.yaml` — OpenAPI 3.1 spec; `GET /metrics` — Prometheus exposition
+- `GET /api/v1/health`: liveness plus audit-chain verification summary and buffered alert count
+- `POST /api/v1/events`: accept one validated canonical event into the recent-events buffer with `ingest` audit append
+- `GET /api/v1/digest`: query parameters `strategy`, `diversity`, `k`; returns curated selection; appends **`digest_selection`** audit record (distinct from orchestrator AI records)
+- `GET /api/v1/audit`: snapshot hash chain with verifier status
+- `GET /api/v1/alerts` / `DELETE /api/v1/alerts`: list or clear buffered operator alerts
+- `POST /api/v1/operator/suggest`: JSON body `{ event_id, instruction? }`; runs `internal/orchestrator` on the shared chain using a bundled manufacturing-line supervisor prompt when `instruction` is omitted
+- `POST /api/v1/operator/suggest-precedents`: JSON body `{ event_id, instruction?, max_precedents? }`; retrieves similar past `operator_action` + `decision` rows from the audit chain, calls the LLM with precedent context, returns `steps[]` (optional `cited_precedent_hash`) plus a `decision` audited as **`decision_with_precedents`**
+- `POST /api/v1/operator/resolve`: JSON body `{ event_id, decision_audit_hash, operator_id, action, annotation }`; values of `action` are `accept`, `override`, or `annotate`; appends **`operator_action`**
+- `GET /api/v1/operator/export`: JSON bundle for offline evidence review (records + verification metadata)
+- `WS /api/v1/stream`: WebSocket push of `event`, `digest`, and `decision` envelopes (see `internal/stream`)
+- `POST /api/v1/webhook`: ingest webhook-shaped events into the gateway buffer (canonical `source_type: webhook`)
+- `GET /api/v1/decisions`: recent orchestrator decisions buffered from Kafka when the gateway bridge is enabled
+- `GET /api/openapi.yaml`: OpenAPI 3.1 spec; `GET /metrics`: Prometheus exposition
 
 **Kafka bridge (optional, `cmd/api-gateway -kafka`):** consumes
 `fluxlens.decisions`, `fluxlens.events.curated`, and `fluxlens.events.raw`
@@ -489,7 +489,7 @@ records that share `event_type`, `source_id`, `severity`, and tenant,
 joined to a recorded `operator_action`. Top-k precedents enrich the LLM
 prompt; the response is surfaced as ordered `steps[]` with optional
 `cited_precedent_hash`. The operator must still **accept**, **override**,
-or **annotate** via `POST /operator/resolve` — the system never executes
+or **annotate** via `POST /operator/resolve`; the system never executes
 operational moves autonomously.
 
 ```mermaid
@@ -588,16 +588,16 @@ FluxLens is designed to support deployment in operational environments
 subject to federal compliance requirements, including but not limited
 to:
 
-- **NIST AI Risk Management Framework (NIST AI 100-1)** — the
+- **NIST AI Risk Management Framework (NIST AI 100-1)**: the
   human-override, auditability, and schema-validation requirements in
   §6.3 are designed to operationalize NIST AI RMF trustworthiness
   characteristics.
-- **NIST SP 800-53** — control families AC (Access Control), AU
+- **NIST SP 800-53**: control families AC (Access Control), AU
   (Audit and Accountability), and SI (System and Information
   Integrity) are addressed by the audit log, role-based access, and
   schema-validation features.
-- **SOC 2 Type II** — auditability and access-control requirements.
-- **HIPAA / state-equivalent data-handling rules** — addressed via
+- **SOC 2 Type II**: auditability and access-control requirements.
+- **HIPAA / state-equivalent data-handling rules**: addressed via
   encrypted-at-rest storage, role-based access, and configurable PII
   redaction in the audit log.
 
@@ -608,7 +608,7 @@ compliant deployment achievable.
 
 ### 9.1 Operator alerting (Phase 1 demo adjunct)
 
-Buffered **operator alerts** complement—but do not replace—the
+Buffered **operator alerts** complement, but do not replace, the
 tamper-evident audit log. Demo rules emit structured notifications when:
 
 - Canonical ingest severity is **warn** or higher (`ingest.severity_warn_or_above`).
@@ -731,11 +731,11 @@ reviews:
 
 See [ROADMAP.md](./ROADMAP.md) for full detail. Summary:
 
-- **Phase 1:** MVP — ingestion + curation + AI
+- **Phase 1:** MVP, ingestion + curation + AI
   decision-support stub + audit log + reference dashboard.
-- **Phase 2 :** Production readiness — hardening,
+- **Phase 2:** Production readiness, hardening,
   HA, observability, comprehensive test coverage, public CI.
-- **Phase 3 :** Ecosystem and integrations — Helm
+- **Phase 3:** Ecosystem and integrations, Helm
   charts, Terraform modules, SIEM integrations, plugin marketplace.
 
 Future capabilities (multi-tenant, federation, KMS signing, integrations,
@@ -779,6 +779,6 @@ etc.) live in [`ROADMAP.md`](./ROADMAP.md) rather than here.
 7. Presidential Policy Directive 21, *Critical Infrastructure Security
    and Resilience* (February 12, 2013).
 8. Federal Emergency Management Agency, *National Preparedness Goal*,
-    Second Edition (September 2015).
+   Second Edition (September 2015).
 9. NIST Special Publication 800-53 Rev. 5, *Security and Privacy
-    Controls for Information Systems and Organizations*.
+   Controls for Information Systems and Organizations*.

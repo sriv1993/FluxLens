@@ -6,7 +6,7 @@
 [![Status: Phase 1 MVP](https://img.shields.io/badge/status-Phase%201%20MVP-orange.svg)](#what-shipped)
 [![Go 1.22+](https://img.shields.io/badge/go-1.22+-00ADD8.svg)](https://golang.org)
 
-> **TL;DR.** FluxLens combines change-data-capture ingestion, freshness/diversity/redundancy-aware event curation, AI decision support with **hard human-override guarantees**, and a **tamper-evident audit log**. Built for operational environments where event volume overwhelms operators (manufacturing lines, large retail networks, research IT). Apache 2.0.  
+> **TL;DR.** FluxLens combines change-data-capture ingestion, freshness/diversity/redundancy-aware event curation, AI decision support with **hard human-override guarantees**, and a **tamper-evident audit log**. It is built for operational environments where event volume overwhelms operators, including manufacturing lines, large retail networks, and research IT. Apache 2.0.  
 > https://github.com/sriv1993/FluxLens
 
 ---
@@ -161,7 +161,7 @@ curl -s localhost:8090/api/v1/audit | jq '.verified, (.records | length)'
 
 ## Get involved
 
-- **Try the demo** and [open an issue](https://github.com/sriv1993/FluxLens/issues) with what confused you or what you need.
+- **Try the demo** and [open an issue](https://github.com/sriv1993/FluxLens/issues) with what confused you or what you need next.
 - **Contribute** connectors, domain packs, tests, or docs.
 - **Discuss** on [GitHub Discussions](https://github.com/sriv1993/FluxLens/discussions).
 
